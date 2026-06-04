@@ -853,8 +853,23 @@ h2 {
 
 .admin-inline-controls {
   display: grid;
-  grid-template-columns: 1fr 86px;
+  grid-template-columns: minmax(110px, 1fr) 86px minmax(120px, auto);
   gap: 8px;
+}
+
+.compact-button {
+  min-width: 120px;
+  width: 100%;
+}
+
+.status-notice {
+  margin: 0 0 14px;
+  border: 1px solid #b7ebc6;
+  border-radius: 14px;
+  padding: 12px 14px;
+  color: #067647;
+  background: #effdf4;
+  font-weight: 900;
 }
 
 .emphasized-input,

@@ -13,6 +13,7 @@ export default function AdminPlayersManager({ players, matches, language, t, onP
   const [sort, setSort] = useState("name");
   const [draft, setDraft] = useState(null);
   const [editingId, setEditingId] = useState(null);
+  const [formError, setFormError] = useState("");
 
   const visiblePlayers = useMemo(() => {
     const term = normalize(search);
@@ -44,11 +45,13 @@ export default function AdminPlayersManager({ players, matches, language, t, onP
 
   function openAdd() {
     setEditingId(null);
+    setFormError("");
     setDraft({ ...emptyPlayer });
   }
 
   function openEdit(player) {
     setEditingId(player.id);
+    setFormError("");
     setDraft({
       ...player,
       rating: player.rating ?? "",
@@ -59,6 +62,7 @@ export default function AdminPlayersManager({ players, matches, language, t, onP
   function closeForm() {
     setDraft(null);
     setEditingId(null);
+    setFormError("");
   }
 
   function normalizeDraft() {
@@ -70,8 +74,27 @@ export default function AdminPlayersManager({ players, matches, language, t, onP
     };
   }
 
+  function validateDraft() {
+    if (!draft.name.trim()) return t("enterPlayerName");
+    if (!draft.gender) return t("selectGender");
+    if (!draft.categories.length) return t("selectAtLeastOneEvent");
+    if (draft.rating !== "" && draft.rating !== null && Number.isNaN(Number(draft.rating))) {
+      return t("ratingMustBeNumber");
+    }
+    if (draft.gender !== "Female" && draft.categories.includes("womens_singles")) {
+      return t("womensOnly");
+    }
+    return "";
+  }
+
   function handleSubmit(event) {
     event.preventDefault();
+    const validationError = validateDraft();
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
+
     const nextPlayer = normalizeDraft();
 
     if (editingId) {
@@ -94,6 +117,7 @@ export default function AdminPlayersManager({ players, matches, language, t, onP
   }
 
   function deletePlayer(id) {
+    if (!window.confirm(t("confirmDeletePlayer"))) return;
     onPlayersChange(players.filter((player) => player.id !== id));
   }
 
@@ -184,7 +208,11 @@ export default function AdminPlayersManager({ players, matches, language, t, onP
           language={language}
           t={t}
           title={editingId ? t("editPlayer") : t("addPlayer")}
-          onChange={setDraft}
+          error={formError}
+          onChange={(nextDraft) => {
+            setFormError("");
+            setDraft(nextDraft);
+          }}
           onCancel={closeForm}
           onSubmit={handleSubmit}
         />

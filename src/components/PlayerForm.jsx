@@ -8,7 +8,7 @@ export const emptyPlayer = {
   categories: ["singles"],
 };
 
-export default function PlayerForm({ value, language, t, title, onChange, onCancel, onSubmit }) {
+export default function PlayerForm({ value, language, t, title, error, onChange, onCancel, onSubmit }) {
   const [warning, setWarning] = useState("");
 
   function updateField(field, nextValue) {
@@ -66,9 +66,9 @@ export default function PlayerForm({ value, language, t, title, onChange, onCanc
           <label>
             <span>{t("gender")}</span>
             <select value={value.gender} onChange={(event) => updateField("gender", event.target.value)}>
-              <option>Male</option>
-              <option>Female</option>
-              <option>Other</option>
+              <option value="Male">{t("male")}</option>
+              <option value="Female">{t("female")}</option>
+              <option value="Other">{t("other")}</option>
             </select>
           </label>
 
@@ -84,7 +84,7 @@ export default function PlayerForm({ value, language, t, title, onChange, onCanc
           </label>
 
           <fieldset className="category-checkboxes">
-            <legend>{t("category")}</legend>
+            <legend>{t("events")}</legend>
             {CATEGORIES.map((category) => {
               const disabled = category.id === "womens_singles" && value.gender !== "Female";
               return (
@@ -102,6 +102,7 @@ export default function PlayerForm({ value, language, t, title, onChange, onCanc
           </fieldset>
 
           {warning && <div className="form-warning">{warning}</div>}
+          {error && <div className="form-error">{error}</div>}
 
           <div className="form-actions">
             <button className="ghost-button" type="button" onClick={onCancel}>

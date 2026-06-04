@@ -5,6 +5,7 @@ import MatchForm, { emptyMatch } from "./MatchForm.jsx";
 import AdminPlayersManager from "./AdminPlayersManager.jsx";
 import LanguageToggle from "./LanguageToggle.jsx";
 import { resetDemoData } from "../utils/storage.js";
+import { autoAdvanceTable } from "../utils/matchStatus.js";
 
 function toInputTime(time) {
   return String(time).slice(0, 16);
@@ -57,6 +58,7 @@ export default function AdminDashboard({
   const [activeTab, setActiveTab] = useState(initialTab);
   const [draft, setDraft] = useState(null);
   const [editingId, setEditingId] = useState(null);
+  const [statusNotice, setStatusNotice] = useState("");
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -90,20 +92,32 @@ export default function AdminDashboard({
   function handleSubmit(event) {
     event.preventDefault();
     const normalized = { ...draft, time: fromInputTime(draft.time) };
+    let nextMatches;
 
     if (editingId) {
-      onMatchesChange(
-        matches.map((match) => (match.id === editingId ? { ...normalized, id: editingId } : match))
+      nextMatches = matches.map((match) =>
+        match.id === editingId ? { ...normalized, id: editingId } : match
       );
     } else {
-      onMatchesChange([
+      nextMatches = [
         ...matches,
         {
           ...normalized,
           id: `m${Date.now()}`,
         },
-      ]);
+      ];
     }
+
+    if (normalized.status === "Finished") {
+      const finishedId = editingId || nextMatches[nextMatches.length - 1].id;
+      const advancedMatches = autoAdvanceTable(nextMatches, finishedId);
+      if (advancedMatches !== nextMatches) {
+        setStatusNotice(t("nextMatchAutoPlaying"));
+      }
+      nextMatches = advancedMatches;
+    }
+
+    onMatchesChange(nextMatches);
 
     closeForm();
   }
@@ -113,7 +127,27 @@ export default function AdminDashboard({
   }
 
   function quickUpdate(id, field, value) {
-    onMatchesChange(matches.map((match) => (match.id === id ? { ...match, [field]: value } : match)));
+    let nextMatches = matches.map((match) => (match.id === id ? { ...match, [field]: value } : match));
+    if (field === "status" && value === "Finished") {
+      const advancedMatches = autoAdvanceTable(nextMatches, id);
+      if (advancedMatches !== nextMatches) {
+        setStatusNotice(t("nextMatchAutoPlaying"));
+      }
+      nextMatches = advancedMatches;
+    }
+    onMatchesChange(nextMatches);
+  }
+
+  function submitResult(matchId) {
+    let nextMatches = matches.map((match) =>
+      match.id === matchId ? { ...match, status: "Finished" } : match
+    );
+    const advancedMatches = autoAdvanceTable(nextMatches, matchId);
+    if (advancedMatches !== nextMatches) {
+      setStatusNotice(t("nextMatchAutoPlaying"));
+    }
+    nextMatches = advancedMatches;
+    onMatchesChange(nextMatches);
   }
 
   function handlePlayersChange(nextPlayers) {
@@ -188,6 +222,7 @@ export default function AdminDashboard({
               {t("restoreDemoData")}
             </button>
           </section>
+          {statusNotice && <div className="status-notice">{statusNotice}</div>}
 
           <section className="admin-list">
             {matches.map((match) => (
@@ -218,6 +253,13 @@ export default function AdminDashboard({
                     placeholder={t("score")}
                     aria-label="Update match score"
                   />
+                  <button
+                    className="primary-button compact-button"
+                    type="button"
+                    onClick={() => submitResult(match.id)}
+                  >
+                    {t("submitResult")}
+                  </button>
                 </div>
 
                 <div className="row-actions">
