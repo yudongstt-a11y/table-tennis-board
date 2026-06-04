@@ -1,7 +1,7 @@
 import { getMatchFormat } from "../constants/matchFormats.js";
 import {
-  applyBonusTimeToNextMatch,
   calculateRemainingSeconds,
+  getMatchDefaultSeconds,
   startMatchTimer,
   stopMatchTimer,
 } from "./matchTimer.js";
@@ -45,6 +45,21 @@ function normalizeTableOrder(matches, table) {
   );
 }
 
+function nextTableControls(tableControls = {}, table, nextBankSeconds) {
+  const currentControls = tableControls || {};
+  return {
+    ...currentControls,
+    [table]: {
+      ...(currentControls[table] || {}),
+      timeBankSeconds: nextBankSeconds,
+    },
+  };
+}
+
+function getTableBank(tableControls = {}, table) {
+  return Number((tableControls || {})[table]?.timeBankSeconds) || 0;
+}
+
 export function isFirstTableMatch(matches, matchId) {
   const match = matches.find((item) => item.id === matchId);
   if (!match || match.isBye || !match.table) return false;
@@ -53,41 +68,57 @@ export function isFirstTableMatch(matches, matchId) {
   return firstMatch?.id === matchId;
 }
 
-export function startFirstTableMatch(matches, matchId) {
+export function startFirstTableMatch(matches, matchId, tableControls = null) {
   const match = matches.find((item) => item.id === matchId);
   if (!match || match.status !== "Upcoming" || !isFirstTableMatch(matches, matchId)) {
-    return matches;
+    return tableControls ? { matches, tableControls } : matches;
   }
 
-  const started = startMatchTimer(matches, matchId);
-  return keepSinglePlayingOnTable(started, match.table, matchId);
+  const timeBankSeconds = getTableBank(tableControls, match.table);
+  const initialSeconds = getMatchDefaultSeconds(match) + timeBankSeconds;
+  const started = startMatchTimer(matches, matchId, initialSeconds);
+  const nextMatches = keepSinglePlayingOnTable(started, match.table, matchId);
+  const nextControls = nextTableControls(tableControls, match.table, 0);
+
+  return tableControls ? { matches: nextMatches, tableControls: nextControls } : nextMatches;
 }
 
-export function startNextTableMatch(matches, table) {
+export function startNextTableMatch(matches, table, tableControls = null) {
   const nextMatch = tableMatches(matches, table).find((match) => match.status === "Upcoming");
-  if (!nextMatch) return matches;
+  if (!nextMatch) return tableControls ? { matches, tableControls } : matches;
 
-  const started = startMatchTimer(matches, nextMatch.id);
-  return keepSinglePlayingOnTable(started, table, nextMatch.id);
+  const timeBankSeconds = getTableBank(tableControls, table);
+  const initialSeconds = getMatchDefaultSeconds(nextMatch) + timeBankSeconds;
+  const started = startMatchTimer(matches, nextMatch.id, initialSeconds);
+  const nextMatches = keepSinglePlayingOnTable(started, table, nextMatch.id);
+  const nextControls = nextTableControls(tableControls, table, 0);
+
+  return tableControls ? { matches: nextMatches, tableControls: nextControls } : nextMatches;
 }
 
-export function autoAdvanceTable(matches, finishedMatchId, bonusSeconds = 0) {
+export function autoAdvanceTable(matches, finishedMatchId, tableControls = null) {
   const finishedMatch = matches.find((match) => match.id === finishedMatchId);
-  if (!finishedMatch || finishedMatch.status !== "Finished" || !finishedMatch.table) return matches;
+  if (!finishedMatch || finishedMatch.status !== "Finished" || !finishedMatch.table) {
+    return tableControls ? { matches, tableControls } : matches;
+  }
 
   const ordered = tableMatches(matches, finishedMatch.table).sort(byTime);
   const finishedIndex = ordered.findIndex((match) => match.id === finishedMatchId);
-  if (finishedIndex === -1) return matches;
+  if (finishedIndex === -1) return tableControls ? { matches, tableControls } : matches;
 
   const nextMatch = ordered
     .slice(finishedIndex + 1)
     .find((match) => match.status === "Upcoming");
 
-  if (!nextMatch) return matches;
+  if (!nextMatch) return tableControls ? { matches, tableControls } : matches;
 
-  let updated = applyBonusTimeToNextMatch(matches, nextMatch.id, bonusSeconds);
-  updated = startMatchTimer(updated, nextMatch.id);
-  return keepSinglePlayingOnTable(updated, finishedMatch.table, nextMatch.id);
+  const timeBankSeconds = getTableBank(tableControls, finishedMatch.table);
+  const initialSeconds = getMatchDefaultSeconds(nextMatch) + timeBankSeconds;
+  let updated = startMatchTimer(matches, nextMatch.id, initialSeconds);
+  updated = keepSinglePlayingOnTable(updated, finishedMatch.table, nextMatch.id);
+  const nextControls = nextTableControls(tableControls, finishedMatch.table, 0);
+
+  return tableControls ? { matches: updated, tableControls: nextControls } : updated;
 }
 
 export function buildScore(winnerSide, loserScore, winnerGames = 3) {
@@ -146,14 +177,14 @@ export function advancePlacementWinnerLoser(matches, matchId) {
   });
 }
 
-export function submitMatchResult(matches, matchId, winnerSide, loserScore) {
+export function submitMatchResult(matches, matchId, winnerSide, loserScore, tableControls = null) {
   const existingMatch = matches.find((match) => match.id === matchId);
-  if (!existingMatch) return matches;
+  if (!existingMatch) return tableControls ? { matches, tableControls } : matches;
 
   const wasFinished = existingMatch.status === "Finished";
   const winnerGames = existingMatch.winnerGames || getMatchFormat(existingMatch.matchFormat).winnerGames;
   const score = buildScore(winnerSide, loserScore, winnerGames);
-  const remainingSeconds = Math.max(0, calculateRemainingSeconds(existingMatch) || 0);
+  const remainingSeconds = calculateRemainingSeconds(existingMatch) || 0;
   const loserSide = winnerSide === "A" ? "B" : "A";
 
   let updated = stopMatchTimer(matches, matchId).map((match) =>
@@ -166,7 +197,7 @@ export function submitMatchResult(matches, matchId, winnerSide, loserScore) {
           winnerId: match[`player${winnerSide}Id`] || null,
           loserId: match[`player${loserSide}Id`] || null,
           countdownActive: false,
-          overtime: remainingSeconds <= 0,
+          overtime: remainingSeconds < 0,
         }
       : match
   );
@@ -174,11 +205,21 @@ export function submitMatchResult(matches, matchId, winnerSide, loserScore) {
   updated = advanceBracketWinner(updated, matchId);
   updated = advancePlacementWinnerLoser(updated, matchId);
 
+  let nextControls = tableControls;
+
   if (!wasFinished) {
-    updated = autoAdvanceTable(updated, matchId, remainingSeconds);
+    const currentBank = getTableBank(nextControls, existingMatch.table);
+    nextControls = nextTableControls(nextControls, existingMatch.table, currentBank + remainingSeconds);
+    const advanced = autoAdvanceTable(updated, matchId, nextControls);
+    if (tableControls) {
+      updated = advanced.matches;
+      nextControls = advanced.tableControls;
+    } else {
+      updated = advanced;
+    }
   }
 
-  return updated;
+  return tableControls ? { matches: updated, tableControls: nextControls } : updated;
 }
 
 export function moveMatchToTable(matches, matchId, targetTable) {
@@ -196,6 +237,8 @@ export function moveMatchToTable(matches, matchId, targetTable) {
           table: targetTable,
           tableOrder: nextOrder,
           status: nextStatus,
+          remainingSeconds: nextStatus === "Upcoming" ? null : match.remainingSeconds,
+          startedAt: nextStatus === "Upcoming" ? null : match.startedAt,
           countdownActive: nextStatus === "Playing" ? match.countdownActive : false,
         }
       : match

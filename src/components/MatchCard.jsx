@@ -1,6 +1,6 @@
 import { getCategoryLabel } from "../constants/categories.js";
 import { getMatchFormatLabel } from "../constants/matchFormats.js";
-import { calculateRemainingSeconds, formatCountdown } from "../utils/matchTimer.js";
+import { calculateRemainingSeconds, formatCountdown, formatOvertime } from "../utils/matchTimer.js";
 
 function formatTime(dateString) {
   return new Intl.DateTimeFormat("en-AU", {
@@ -71,7 +71,7 @@ export default function MatchCard({ match, language, t, compact = false }) {
         </span>
         {match.status === "Playing" && (
           <span className={isOvertime ? "overtime-label" : "countdown-badge"}>
-            {isOvertime ? t("overtime") : formatCountdown(remaining)}
+            {isOvertime ? `${t("overtime")} ${formatOvertime(remaining)}` : formatCountdown(remaining)}
           </span>
         )}
         <strong className={match.score || isFinished ? "" : "empty-score"}>

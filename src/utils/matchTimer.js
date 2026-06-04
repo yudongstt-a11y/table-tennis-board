@@ -6,6 +6,21 @@ export function getDefaultSeconds(matchFormat) {
 
 export function formatCountdown(seconds) {
   const normalized = Math.max(0, Math.floor(Number(seconds) || 0));
+  return formatDuration(normalized);
+}
+
+export function formatOvertime(seconds) {
+  return formatDuration(Math.abs(Math.floor(Number(seconds) || 0)));
+}
+
+export function formatSignedTime(seconds) {
+  const value = Math.floor(Number(seconds) || 0);
+  if (value === 0) return "0";
+  return `${value > 0 ? "+" : "-"}${formatDuration(Math.abs(value))}`;
+}
+
+function formatDuration(totalSeconds) {
+  const normalized = Math.max(0, Math.floor(Number(totalSeconds) || 0));
   const hours = Math.floor(normalized / 3600);
   const minutes = Math.floor((normalized % 3600) / 60);
   const restSeconds = normalized % 60;
@@ -32,22 +47,26 @@ export function calculateRemainingSeconds(match, now = Date.now()) {
   return baseSeconds - elapsedSeconds;
 }
 
-export function startMatchTimer(matches, matchId, extraSeconds = 0) {
+export function getMatchDefaultSeconds(match) {
+  return (match.defaultMinutes || match.defaultMatchMinutes || getMatchFormat(match.matchFormat).defaultMinutes) * 60;
+}
+
+export function startMatchTimer(matches, matchId, initialSeconds = null) {
   const now = Date.now();
 
   return matches.map((match) => {
     if (match.id !== matchId) return match;
 
-    const defaultSeconds = (match.defaultMinutes || match.defaultMatchMinutes || 25) * 60;
-    const remainingSeconds = match.remainingSeconds ?? defaultSeconds;
+    const defaultSeconds = getMatchDefaultSeconds(match);
+    const remainingSeconds = initialSeconds ?? match.remainingSeconds ?? defaultSeconds;
 
     return {
       ...match,
       status: "Playing",
-      remainingSeconds: remainingSeconds + Math.max(0, extraSeconds),
+      remainingSeconds,
       startedAt: now,
       countdownActive: true,
-      overtime: false,
+      overtime: remainingSeconds < 0,
     };
   });
 }
@@ -73,7 +92,7 @@ export function applyBonusTimeToNextMatch(matches, nextMatchId, bonusSeconds) {
   return matches.map((match) => {
     if (match.id !== nextMatchId) return match;
 
-    const defaultSeconds = (match.defaultMinutes || match.defaultMatchMinutes || 25) * 60;
+    const defaultSeconds = getMatchDefaultSeconds(match);
     return {
       ...match,
       remainingSeconds: defaultSeconds + Math.max(0, Number(bonusSeconds) || 0),

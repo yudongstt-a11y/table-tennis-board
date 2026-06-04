@@ -2,7 +2,12 @@ import { useMemo, useState } from "react";
 import { getCategoryLabel } from "../constants/categories.js";
 import { getMatchFormatLabel } from "../constants/matchFormats.js";
 import { tables } from "../data/demoPlayers.js";
-import { calculateRemainingSeconds, formatCountdown } from "../utils/matchTimer.js";
+import {
+  calculateRemainingSeconds,
+  formatCountdown,
+  formatOvertime,
+  formatSignedTime,
+} from "../utils/matchTimer.js";
 import { queueSort, startNextTableMatch } from "../utils/matchProgression.js";
 import ResultSubmitter from "./ResultSubmitter.jsx";
 
@@ -20,7 +25,9 @@ function Countdown({ match, t }) {
     <div className="countdown-line">
       <span>{t("countdown")}</span>
       {overtime ? (
-        <strong className="overtime-label">{t("overtime")}</strong>
+        <strong className="overtime-label">
+          {t("overtime")} {formatOvertime(remaining)}
+        </strong>
       ) : (
         <strong>{formatCountdown(remaining)}</strong>
       )}
@@ -30,9 +37,10 @@ function Countdown({ match, t }) {
 
 export default function TournamentControl({
   matches,
+  tableControls,
   language,
   t,
-  onMatchesChange,
+  onTournamentStateChange,
   onSubmitResult,
   onMoveMatch,
 }) {
@@ -54,7 +62,8 @@ export default function TournamentControl({
   }, [matches]);
 
   function startNext(table) {
-    onMatchesChange(startNextTableMatch(matches, table));
+    const next = startNextTableMatch(matches, table, tableControls);
+    onTournamentStateChange(next.matches, next.tableControls);
   }
 
   function submitMove(match) {
@@ -84,6 +93,7 @@ export default function TournamentControl({
           const playing = queue.find((match) => match.status === "Playing");
           const upcoming = queue.filter((match) => match.status === "Upcoming");
           const current = playing || null;
+          const timeBankSeconds = Number(tableControls?.[table]?.timeBankSeconds) || 0;
 
           return (
             <article className="control-card" key={table}>
@@ -94,6 +104,17 @@ export default function TournamentControl({
                 ) : (
                   <span className="status-badge upcoming">{t("upcoming")}</span>
                 )}
+              </div>
+              <div
+                className={
+                  timeBankSeconds > 0
+                    ? "time-bank positive"
+                    : timeBankSeconds < 0
+                      ? "time-bank negative"
+                      : "time-bank"
+                }
+              >
+                {t("timeBank")}: {formatSignedTime(timeBankSeconds)}
               </div>
 
               {current ? (

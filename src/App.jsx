@@ -6,9 +6,11 @@ import {
   getMatches,
   getPlayers,
   getStages,
+  getTableControls,
   saveMatches,
   savePlayers,
   saveStages,
+  saveTableControls,
 } from "./utils/storage.js";
 import { LANGUAGE_KEY } from "./i18n/translations.js";
 
@@ -37,6 +39,7 @@ export default function App() {
   const [matches, setMatches] = useState(() => getMatches());
   const [players, setPlayers] = useState(() => getPlayers());
   const [stages, setStages] = useState(() => getStages());
+  const [tableControls, setTableControls] = useState(() => getTableControls());
   const [language, setLanguage] = useState(() => localStorage.getItem(LANGUAGE_KEY) || "zh");
   const [isLoggedIn, setIsLoggedIn] = useState(() => hasAdminSession());
 
@@ -88,10 +91,21 @@ export default function App() {
     saveStages(sorted);
   }
 
+  function updateTableControls(nextTableControls) {
+    setTableControls(nextTableControls);
+    saveTableControls(nextTableControls);
+  }
+
+  function updateTournamentState(nextMatches, nextTableControls) {
+    updateMatches(nextMatches);
+    updateTableControls(nextTableControls);
+  }
+
   function replaceAllData(nextData) {
     setMatches(nextData.matches);
     setPlayers(nextData.players);
     setStages(nextData.stages);
+    setTableControls(nextData.tableControls);
   }
 
   function handleLogin(username, password, rememberMe) {
@@ -163,10 +177,13 @@ export default function App() {
         matches={sortedMatches}
         players={sortedPlayers}
         stages={stages}
+        tableControls={tableControls}
         onLanguageChange={updateLanguage}
         onMatchesChange={updateMatches}
         onPlayersChange={updatePlayers}
         onStagesChange={updateStages}
+        onTableControlsChange={updateTableControls}
+        onTournamentStateChange={updateTournamentState}
         onReplaceAllData={replaceAllData}
         onLogout={handleLogout}
         onPublicView={() => navigate("/")}

@@ -930,6 +930,29 @@ h2 {
   font-weight: 900;
 }
 
+.time-bank {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 28px;
+  border-radius: 7px;
+  padding: 0 9px;
+  color: #64748b;
+  background: #f1f5f9;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.time-bank.positive {
+  color: #16875d;
+  background: #ecfdf3;
+}
+
+.time-bank.negative {
+  color: #b42318;
+  background: #fff1f0;
+}
+
 .compact-countdown {
   margin-top: 6px;
 }

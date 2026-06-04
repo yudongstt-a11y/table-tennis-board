@@ -9,7 +9,7 @@ import {
   startFirstTableMatch,
   submitMatchResult,
 } from "../utils/matchProgression.js";
-import { calculateRemainingSeconds, formatCountdown } from "../utils/matchTimer.js";
+import { calculateRemainingSeconds, formatCountdown, formatOvertime } from "../utils/matchTimer.js";
 import { resetDemoData } from "../utils/storage.js";
 import AdminPlayersManager from "./AdminPlayersManager.jsx";
 import AdminStagesManager from "./AdminStagesManager.jsx";
@@ -59,10 +59,13 @@ export default function AdminDashboard({
   matches,
   players,
   stages,
+  tableControls,
   onLanguageChange,
   onMatchesChange,
   onPlayersChange,
   onStagesChange,
+  onTableControlsChange,
+  onTournamentStateChange,
   onReplaceAllData,
   onLogout,
   onPublicView,
@@ -156,21 +159,23 @@ export default function AdminDashboard({
   }
 
   function handleStartMatch(matchId) {
-    onMatchesChange(startFirstTableMatch(matches, matchId));
+    const next = startFirstTableMatch(matches, matchId, tableControls);
+    onTournamentStateChange(next.matches, next.tableControls);
   }
 
   function handleSubmitResult(matchId, winnerSide, loserScore) {
     const beforePlaying = matches
       .filter((match) => match.status === "Playing")
       .map((match) => match.id);
-    const after = submitMatchResult(matches, matchId, winnerSide, loserScore);
+    const next = submitMatchResult(matches, matchId, winnerSide, loserScore, tableControls);
+    const after = next.matches;
     const afterPlaying = after.filter((match) => match.status === "Playing").map((match) => match.id);
 
     if (afterPlaying.some((id) => !beforePlaying.includes(id))) {
       setStatusNotice(t("nextMatchAutoPlaying"));
     }
 
-    onMatchesChange(after);
+    onTournamentStateChange(after, next.tableControls);
   }
 
   function handleMoveMatch(matchId, targetTable) {
@@ -202,7 +207,9 @@ export default function AdminDashboard({
       <div className="countdown-line compact-countdown">
         <span>{t("countdown")}</span>
         {remaining <= 0 ? (
-          <strong className="overtime-label">{t("overtime")}</strong>
+          <strong className="overtime-label">
+            {t("overtime")} {formatOvertime(remaining)}
+          </strong>
         ) : (
           <strong>{formatCountdown(remaining)}</strong>
         )}
@@ -333,9 +340,10 @@ export default function AdminDashboard({
       ) : activeTab === "control" ? (
         <TournamentControl
           matches={matches}
+          tableControls={tableControls}
           language={language}
           t={t}
-          onMatchesChange={onMatchesChange}
+          onTournamentStateChange={onTournamentStateChange}
           onSubmitResult={handleSubmitResult}
           onMoveMatch={handleMoveMatch}
         />

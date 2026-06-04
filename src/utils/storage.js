@@ -1,12 +1,13 @@
 import { getMatchFormat } from "../constants/matchFormats.js";
 import { demoMatches } from "../data/demoMatches.js";
-import { demoPlayers } from "../data/demoPlayers.js";
+import { demoPlayers, tables } from "../data/demoPlayers.js";
 import { demoStages } from "../data/demoStages.js";
 import { categoryIdFromLegacy } from "../constants/categories.js";
 
 const MATCHES_KEY = "table_tennis_schedule_matches";
 const PLAYERS_KEY = "table_tennis_schedule_players";
 const STAGES_KEY = "table_tennis_schedule_stages";
+const TABLE_CONTROLS_KEY = "table_tennis_table_controls";
 
 function readArray(key, fallback) {
   try {
@@ -18,6 +19,22 @@ function readArray(key, fallback) {
   } catch {
     return fallback;
   }
+}
+
+function readObject(key, fallback) {
+  try {
+    const stored = localStorage.getItem(key);
+    if (!stored) return fallback;
+
+    const parsed = JSON.parse(stored);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function defaultTableControls() {
+  return Object.fromEntries(tables.map((table) => [table, { timeBankSeconds: 0 }]));
 }
 
 function upgradePlayer(player) {
@@ -119,6 +136,24 @@ export function saveStages(stages) {
   localStorage.setItem(STAGES_KEY, JSON.stringify(stages));
 }
 
+export function getTableControls() {
+  const defaults = defaultTableControls();
+  const stored = readObject(TABLE_CONTROLS_KEY, defaults);
+
+  return Object.fromEntries(
+    tables.map((table) => [
+      table,
+      {
+        timeBankSeconds: Number(stored[table]?.timeBankSeconds) || 0,
+      },
+    ])
+  );
+}
+
+export function saveTableControls(tableControls) {
+  localStorage.setItem(TABLE_CONTROLS_KEY, JSON.stringify(tableControls));
+}
+
 export function getMatches() {
   const stages = getStages();
   return readArray(MATCHES_KEY, demoMatches).map((match) => upgradeMatch(match, stages));
@@ -132,7 +167,13 @@ export function resetDemoData() {
   saveMatches(demoMatches);
   savePlayers(demoPlayers);
   saveStages(demoStages);
-  return { matches: getMatches(), players: getPlayers(), stages: getStages() };
+  saveTableControls(defaultTableControls());
+  return {
+    matches: getMatches(),
+    players: getPlayers(),
+    stages: getStages(),
+    tableControls: getTableControls(),
+  };
 }
 
 export const loadMatches = getMatches;
