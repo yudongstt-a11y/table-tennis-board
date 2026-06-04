@@ -6,11 +6,12 @@ export default function AdminLogin({ language, onLanguageChange, onLogin, onBack
   const t = getTranslator(language);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
 
   function handleSubmit(event) {
     event.preventDefault();
-    const result = onLogin(username, password);
+    const result = onLogin(username, password, rememberMe);
     if (!result.ok) {
       setError(t("usernameOrPasswordWrong"));
     }
@@ -43,6 +44,17 @@ export default function AdminLogin({ language, onLanguageChange, onLogin, onBack
               type="password"
               autoComplete="current-password"
             />
+          </label>
+          <label className="remember-option">
+            <input
+              checked={rememberMe}
+              onChange={(event) => setRememberMe(event.target.checked)}
+              type="checkbox"
+            />
+            <span>
+              <strong>{t("rememberMe")}</strong>
+              <small>{t("rememberMeHelp")}</small>
+            </span>
           </label>
           {error && <div className="form-error">{error}</div>}
           <button className="primary-button" type="submit">

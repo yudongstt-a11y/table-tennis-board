@@ -765,6 +765,46 @@ h2 {
   margin-top: 24px;
 }
 
+.remember-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 48px;
+  padding: 11px 12px;
+  border: 1px solid #d8e1ec;
+  border-radius: 12px;
+  color: #33435c;
+  background: #f8fbff;
+  cursor: pointer;
+}
+
+.remember-option input {
+  width: 22px;
+  height: 22px;
+  min-height: 22px;
+  margin: 1px 0 0;
+  accent-color: #175cd3;
+  cursor: pointer;
+}
+
+.remember-option span {
+  display: grid;
+  gap: 4px;
+}
+
+.remember-option strong {
+  color: #172033;
+  font-size: 14px;
+  line-height: 1.1;
+}
+
+.remember-option small {
+  color: #607086;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
 .form-error {
   border-radius: 8px;
   padding: 10px 12px;
