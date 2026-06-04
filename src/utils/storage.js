@@ -1,5 +1,6 @@
 import { getMatchFormat } from "../constants/matchFormats.js";
 import { demoMatches } from "../data/demoMatches.js";
+import { demoBreaks } from "../data/demoBreaks.js";
 import { demoPlayers, tables } from "../data/demoPlayers.js";
 import { demoStages } from "../data/demoStages.js";
 import { categoryIdFromLegacy } from "../constants/categories.js";
@@ -8,6 +9,8 @@ const MATCHES_KEY = "table_tennis_schedule_matches";
 const PLAYERS_KEY = "table_tennis_schedule_players";
 const STAGES_KEY = "table_tennis_schedule_stages";
 const TABLE_CONTROLS_KEY = "table_tennis_table_controls";
+const BREAKS_KEY = "table_tennis_breaks";
+const TOURNAMENT_CONTROL_KEY = "table_tennis_tournament_control";
 
 function readArray(key, fallback) {
   try {
@@ -35,6 +38,15 @@ function readObject(key, fallback) {
 
 function defaultTableControls() {
   return Object.fromEntries(tables.map((table) => [table, { timeBankSeconds: 0 }]));
+}
+
+function defaultTournamentControl() {
+  return {
+    status: "not_started",
+    startedAt: null,
+    pausedAt: null,
+    activeBreakId: null,
+  };
 }
 
 function upgradePlayer(player) {
@@ -154,6 +166,25 @@ export function saveTableControls(tableControls) {
   localStorage.setItem(TABLE_CONTROLS_KEY, JSON.stringify(tableControls));
 }
 
+export function getBreaks() {
+  return readArray(BREAKS_KEY, demoBreaks);
+}
+
+export function saveBreaks(breaks) {
+  localStorage.setItem(BREAKS_KEY, JSON.stringify(breaks));
+}
+
+export function getTournamentControl() {
+  return {
+    ...defaultTournamentControl(),
+    ...readObject(TOURNAMENT_CONTROL_KEY, defaultTournamentControl()),
+  };
+}
+
+export function saveTournamentControl(tournamentControl) {
+  localStorage.setItem(TOURNAMENT_CONTROL_KEY, JSON.stringify(tournamentControl));
+}
+
 export function getMatches() {
   const stages = getStages();
   return readArray(MATCHES_KEY, demoMatches).map((match) => upgradeMatch(match, stages));
@@ -168,11 +199,15 @@ export function resetDemoData() {
   savePlayers(demoPlayers);
   saveStages(demoStages);
   saveTableControls(defaultTableControls());
+  saveBreaks(demoBreaks);
+  saveTournamentControl(defaultTournamentControl());
   return {
     matches: getMatches(),
     players: getPlayers(),
     stages: getStages(),
     tableControls: getTableControls(),
+    breaks: getBreaks(),
+    tournamentControl: getTournamentControl(),
   };
 }
 

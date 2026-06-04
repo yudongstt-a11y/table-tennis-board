@@ -20,7 +20,14 @@ function normalize(value) {
   return String(value).trim().toLowerCase();
 }
 
-export default function ScheduleBoard({ matches, players, language, onLanguageChange, onAdminClick }) {
+export default function ScheduleBoard({
+  matches,
+  players,
+  language,
+  tournamentControl,
+  onLanguageChange,
+  onAdminClick,
+}) {
   const t = getTranslator(language);
   const [activeTab, setActiveTab] = useState("schedule");
   const [search, setSearch] = useState("");
@@ -103,6 +110,11 @@ export default function ScheduleBoard({ matches, players, language, onLanguageCh
           </div>
         </div>
       </header>
+
+      <section className={`tournament-banner ${tournamentControl?.status || "not_started"}`}>
+        <strong>{t(`tournament_${tournamentControl?.status || "not_started"}`)}</strong>
+        {tournamentControl?.status === "paused" && <span>{t("matchesPaused")}</span>}
+      </section>
 
       <nav className="top-tabs" aria-label="Public sections">
         <button

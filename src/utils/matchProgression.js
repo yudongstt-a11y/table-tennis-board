@@ -96,6 +96,71 @@ export function startNextTableMatch(matches, table, tableControls = null) {
   return tableControls ? { matches: nextMatches, tableControls: nextControls } : nextMatches;
 }
 
+export function startTournament(matches, tableControls = {}) {
+  let nextMatches = matches.map((match) =>
+    !match.isBye
+      ? {
+          ...match,
+          status: "Upcoming",
+          countdownActive: false,
+          startedAt: null,
+        }
+      : match
+  );
+  let nextControls = tableControls;
+
+  const tables = [...new Set(nextMatches.map((match) => match.table).filter(Boolean))];
+  tables.forEach((table) => {
+    const first = tableMatches(nextMatches, table).find((match) => match.status === "Upcoming");
+    if (!first) return;
+
+    const initialSeconds = getMatchDefaultSeconds(first) + getTableBank(nextControls, table);
+    nextMatches = startMatchTimer(nextMatches, first.id, initialSeconds);
+    nextMatches = keepSinglePlayingOnTable(nextMatches, table, first.id);
+    nextControls = nextTableControls(nextControls, table, 0);
+  });
+
+  return { matches: nextMatches, tableControls: nextControls };
+}
+
+export function startNextRound(matches, tableControls = {}) {
+  let nextMatches = matches;
+  let nextControls = tableControls;
+  const tables = [...new Set(nextMatches.map((match) => match.table).filter(Boolean))];
+
+  tables.forEach((table) => {
+    if (tableMatches(nextMatches, table).some((match) => match.status === "Playing")) return;
+
+    const next = tableMatches(nextMatches, table).find((match) => match.status === "Upcoming");
+    if (!next) return;
+
+    const initialSeconds =
+      next.remainingSeconds ?? getMatchDefaultSeconds(next) + getTableBank(nextControls, table);
+    nextMatches = startMatchTimer(nextMatches, next.id, initialSeconds);
+    nextMatches = keepSinglePlayingOnTable(nextMatches, table, next.id);
+    nextControls = nextTableControls(nextControls, table, 0);
+  });
+
+  return { matches: nextMatches, tableControls: nextControls };
+}
+
+export function pauseAllUnfinishedMatches(matches) {
+  return matches.map((match) => {
+    if (match.status === "Finished") return match;
+
+    const remainingSeconds =
+      match.status === "Playing" ? calculateRemainingSeconds(match) : match.remainingSeconds;
+
+    return {
+      ...match,
+      status: "Upcoming",
+      remainingSeconds,
+      countdownActive: false,
+      startedAt: null,
+    };
+  });
+}
+
 export function autoAdvanceTable(matches, finishedMatchId, tableControls = null) {
   const finishedMatch = matches.find((match) => match.id === finishedMatchId);
   if (!finishedMatch || finishedMatch.status !== "Finished" || !finishedMatch.table) {
@@ -177,7 +242,14 @@ export function advancePlacementWinnerLoser(matches, matchId) {
   });
 }
 
-export function submitMatchResult(matches, matchId, winnerSide, loserScore, tableControls = null) {
+export function submitMatchResult(
+  matches,
+  matchId,
+  winnerSide,
+  loserScore,
+  tableControls = null,
+  tournamentStatus = "running"
+) {
   const existingMatch = matches.find((match) => match.id === matchId);
   if (!existingMatch) return tableControls ? { matches, tableControls } : matches;
 
@@ -210,12 +282,14 @@ export function submitMatchResult(matches, matchId, winnerSide, loserScore, tabl
   if (!wasFinished) {
     const currentBank = getTableBank(nextControls, existingMatch.table);
     nextControls = nextTableControls(nextControls, existingMatch.table, currentBank + remainingSeconds);
-    const advanced = autoAdvanceTable(updated, matchId, nextControls);
-    if (tableControls) {
-      updated = advanced.matches;
-      nextControls = advanced.tableControls;
-    } else {
-      updated = advanced;
+    if (tournamentStatus === "running") {
+      const advanced = autoAdvanceTable(updated, matchId, nextControls);
+      if (tableControls) {
+        updated = advanced.matches;
+        nextControls = advanced.tableControls;
+      } else {
+        updated = advanced;
+      }
     }
   }
 

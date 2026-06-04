@@ -7,10 +7,14 @@ import {
   getPlayers,
   getStages,
   getTableControls,
+  getBreaks,
+  getTournamentControl,
   saveMatches,
   savePlayers,
   saveStages,
   saveTableControls,
+  saveBreaks,
+  saveTournamentControl,
 } from "./utils/storage.js";
 import { LANGUAGE_KEY } from "./i18n/translations.js";
 
@@ -40,6 +44,8 @@ export default function App() {
   const [players, setPlayers] = useState(() => getPlayers());
   const [stages, setStages] = useState(() => getStages());
   const [tableControls, setTableControls] = useState(() => getTableControls());
+  const [breaks, setBreaks] = useState(() => getBreaks());
+  const [tournamentControl, setTournamentControl] = useState(() => getTournamentControl());
   const [language, setLanguage] = useState(() => localStorage.getItem(LANGUAGE_KEY) || "zh");
   const [isLoggedIn, setIsLoggedIn] = useState(() => hasAdminSession());
 
@@ -57,6 +63,26 @@ export default function App() {
       navigate("/admin/dashboard");
     }
   }, [path]);
+
+  useEffect(() => {
+    if (tournamentControl.status !== "not_started") return;
+
+    const needsReset = matches.some((match) => !match.isBye && match.status !== "Upcoming");
+    if (!needsReset) return;
+
+    updateMatches(
+      matches.map((match) =>
+        match.isBye
+          ? match
+          : {
+              ...match,
+              status: "Upcoming",
+              countdownActive: false,
+              startedAt: null,
+            }
+      )
+    );
+  }, [tournamentControl.status]);
 
   const sortedMatches = useMemo(
     () => [...matches].sort((a, b) => new Date(a.time) - new Date(b.time)),
@@ -96,6 +122,16 @@ export default function App() {
     saveTableControls(nextTableControls);
   }
 
+  function updateBreaks(nextBreaks) {
+    setBreaks(nextBreaks);
+    saveBreaks(nextBreaks);
+  }
+
+  function updateTournamentControl(nextTournamentControl) {
+    setTournamentControl(nextTournamentControl);
+    saveTournamentControl(nextTournamentControl);
+  }
+
   function updateTournamentState(nextMatches, nextTableControls) {
     updateMatches(nextMatches);
     updateTableControls(nextTableControls);
@@ -106,6 +142,8 @@ export default function App() {
     setPlayers(nextData.players);
     setStages(nextData.stages);
     setTableControls(nextData.tableControls);
+    setBreaks(nextData.breaks);
+    setTournamentControl(nextData.tournamentControl);
   }
 
   function handleLogin(username, password, rememberMe) {
@@ -178,11 +216,15 @@ export default function App() {
         players={sortedPlayers}
         stages={stages}
         tableControls={tableControls}
+        breaks={breaks}
+        tournamentControl={tournamentControl}
         onLanguageChange={updateLanguage}
         onMatchesChange={updateMatches}
         onPlayersChange={updatePlayers}
         onStagesChange={updateStages}
         onTableControlsChange={updateTableControls}
+        onBreaksChange={updateBreaks}
+        onTournamentControlChange={updateTournamentControl}
         onTournamentStateChange={updateTournamentState}
         onReplaceAllData={replaceAllData}
         onLogout={handleLogout}
@@ -196,6 +238,7 @@ export default function App() {
       matches={sortedMatches}
       players={sortedPlayers}
       language={language}
+      tournamentControl={tournamentControl}
       onLanguageChange={updateLanguage}
       onAdminClick={() => navigate("/admin")}
     />

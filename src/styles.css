@@ -1003,6 +1003,78 @@ h2 {
   padding: 14px;
 }
 
+.control-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.break-panel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+  border: 1px solid #dbe5ef;
+  border-radius: 8px;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.break-list {
+  display: grid;
+  gap: 10px;
+}
+
+.break-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  border-top: 1px solid #edf2f7;
+  padding-top: 12px;
+}
+
+.break-card p {
+  margin: 5px 0 0;
+  color: #607086;
+}
+
+.break-notice,
+.tournament-banner {
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: #166534;
+  background: #f0fdf4;
+  font-weight: 900;
+}
+
+.tournament-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.tournament-banner.not_started {
+  border-color: #d8e1ec;
+  color: #475569;
+  background: #f8fafc;
+}
+
+.tournament-banner.paused {
+  border-color: #fed7aa;
+  color: #9a3412;
+  background: #fff7ed;
+}
+
+.tournament-banner.finished {
+  border-color: #e2e8f0;
+  color: #475569;
+  background: #f1f5f9;
+}
+
 .stats-grid span {
   color: #607086;
   font-weight: 800;
@@ -1486,8 +1558,24 @@ h2 {
   .stats-grid,
   .admin-inline-controls,
   .stage-grid,
-  .control-grid {
+  .control-grid,
+  .break-card {
     grid-template-columns: 1fr;
+  }
+
+  .control-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .control-actions .primary-button,
+  .control-actions .ghost-button {
+    width: 100%;
+  }
+
+  .tournament-banner {
+    display: grid;
   }
 
   .winner-grid {

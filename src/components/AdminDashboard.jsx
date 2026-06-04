@@ -60,11 +60,15 @@ export default function AdminDashboard({
   players,
   stages,
   tableControls,
+  breaks,
+  tournamentControl,
   onLanguageChange,
   onMatchesChange,
   onPlayersChange,
   onStagesChange,
   onTableControlsChange,
+  onBreaksChange,
+  onTournamentControlChange,
   onTournamentStateChange,
   onReplaceAllData,
   onLogout,
@@ -167,7 +171,14 @@ export default function AdminDashboard({
     const beforePlaying = matches
       .filter((match) => match.status === "Playing")
       .map((match) => match.id);
-    const next = submitMatchResult(matches, matchId, winnerSide, loserScore, tableControls);
+    const next = submitMatchResult(
+      matches,
+      matchId,
+      winnerSide,
+      loserScore,
+      tableControls,
+      tournamentControl.status
+    );
     const after = next.matches;
     const afterPlaying = after.filter((match) => match.status === "Playing").map((match) => match.id);
 
@@ -341,9 +352,14 @@ export default function AdminDashboard({
         <TournamentControl
           matches={matches}
           tableControls={tableControls}
+          breaks={breaks}
+          stages={stages}
+          tournamentControl={tournamentControl}
           language={language}
           t={t}
           onTournamentStateChange={onTournamentStateChange}
+          onBreaksChange={onBreaksChange}
+          onTournamentControlChange={onTournamentControlChange}
           onSubmitResult={handleSubmitResult}
           onMoveMatch={handleMoveMatch}
         />
