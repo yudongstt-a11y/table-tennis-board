@@ -7,6 +7,15 @@ function normalize(value) {
   return String(value).trim().toLowerCase();
 }
 
+function defaultBulkDraft(action) {
+  return {
+    action,
+    categoryIds: [],
+    rating: "",
+    error: "",
+  };
+}
+
 export default function AdminPlayersManager({ players, matches, language, t, onPlayersChange }) {
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState("all");
@@ -14,6 +23,11 @@ export default function AdminPlayersManager({ players, matches, language, t, onP
   const [draft, setDraft] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [formError, setFormError] = useState("");
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState([]);
+  const [bulkDraft, setBulkDraft] = useState(null);
+  const [bulkNotice, setBulkNotice] = useState("");
+
+  const selectedSet = useMemo(() => new Set(selectedPlayerIds), [selectedPlayerIds]);
 
   const visiblePlayers = useMemo(() => {
     const term = normalize(search);
@@ -42,6 +56,10 @@ export default function AdminPlayersManager({ players, matches, language, t, onP
         return a.name.localeCompare(b.name);
       });
   }, [categoryId, players, search, sort]);
+
+  const visibleIds = visiblePlayers.map((player) => player.id);
+  const allVisibleSelected =
+    visibleIds.length > 0 && visibleIds.every((id) => selectedSet.has(id));
 
   function openAdd() {
     setEditingId(null);
@@ -119,6 +137,7 @@ export default function AdminPlayersManager({ players, matches, language, t, onP
   function deletePlayer(id) {
     if (!window.confirm(t("confirmDeletePlayer"))) return;
     onPlayersChange(players.filter((player) => player.id !== id));
+    setSelectedPlayerIds((ids) => ids.filter((item) => item !== id));
   }
 
   function matchCount(playerId, playerName) {
@@ -130,6 +149,115 @@ export default function AdminPlayersManager({ players, matches, language, t, onP
         match.playerBName.includes(playerName)
     ).length;
   }
+
+  function togglePlayer(id) {
+    setBulkNotice("");
+    setSelectedPlayerIds((ids) =>
+      ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id]
+    );
+  }
+
+  function toggleSelectAllVisible() {
+    setBulkNotice("");
+    if (allVisibleSelected) {
+      setSelectedPlayerIds((ids) => ids.filter((id) => !visibleIds.includes(id)));
+      return;
+    }
+
+    setSelectedPlayerIds((ids) => Array.from(new Set([...ids, ...visibleIds])));
+  }
+
+  function clearSelection() {
+    setSelectedPlayerIds([]);
+    setBulkNotice("");
+  }
+
+  function deleteSelected() {
+    const count = selectedPlayerIds.length;
+    if (!count) return;
+    const message = `${t("confirmBulkDeletePlayers", { count })} ${t("bulkDeleteKeepsMatches")}`;
+    if (!window.confirm(message)) return;
+
+    onPlayersChange(players.filter((player) => !selectedSet.has(player.id)));
+    setSelectedPlayerIds([]);
+    setBulkNotice(t("bulkActionCompleted"));
+  }
+
+  function toggleBulkCategory(categoryId) {
+    setBulkDraft((current) => {
+      const hasCategory = current.categoryIds.includes(categoryId);
+      return {
+        ...current,
+        error: "",
+        categoryIds: hasCategory
+          ? current.categoryIds.filter((id) => id !== categoryId)
+          : [...current.categoryIds, categoryId],
+      };
+    });
+  }
+
+  function applyBulkEvents() {
+    if (!bulkDraft.categoryIds.length) {
+      setBulkDraft((current) => ({ ...current, error: t("selectEvents") }));
+      return;
+    }
+
+    let updatedCount = 0;
+    let skippedCount = 0;
+
+    const nextPlayers = players.map((player) => {
+      if (!selectedSet.has(player.id)) return player;
+
+      if (bulkDraft.action === "add-events") {
+        const allowedCategories = bulkDraft.categoryIds.filter((id) => {
+          if (id === "womens_singles" && player.gender !== "Female") {
+            return false;
+          }
+          return true;
+        });
+        if (allowedCategories.length !== bulkDraft.categoryIds.length) {
+          skippedCount += 1;
+        }
+
+        const nextCategories = Array.from(new Set([...player.categories, ...allowedCategories]));
+        if (nextCategories.length !== player.categories.length) updatedCount += 1;
+        return { ...player, categories: nextCategories };
+      }
+
+      const nextCategories = player.categories.filter((id) => !bulkDraft.categoryIds.includes(id));
+      if (nextCategories.length !== player.categories.length) updatedCount += 1;
+      return { ...player, categories: nextCategories };
+    });
+
+    onPlayersChange(nextPlayers);
+    setBulkDraft(null);
+    setBulkNotice(
+      skippedCount > 0
+        ? `${t("bulkEventsAddedWithSkipped", { count: updatedCount })} ${t("bulkGenderSkipped", { count: skippedCount })}`
+        : t("bulkActionCompleted")
+    );
+  }
+
+  function applyBulkRating(clear = false) {
+    if (!clear && (bulkDraft.rating === "" || Number.isNaN(Number(bulkDraft.rating)))) {
+      setBulkDraft((current) => ({ ...current, error: t("ratingMustBeNumber") }));
+      return;
+    }
+
+    const nextRating = clear ? null : Number(bulkDraft.rating);
+    onPlayersChange(
+      players.map((player) =>
+        selectedSet.has(player.id) ? { ...player, rating: nextRating } : player
+      )
+    );
+    setBulkDraft(null);
+    setBulkNotice(t("bulkActionCompleted"));
+  }
+
+  const selectedCountText =
+    selectedPlayerIds.length > 0
+      ? t("playersSelected", { count: selectedPlayerIds.length })
+      : t("noPlayersSelected");
 
   return (
     <section className="admin-panel">
@@ -169,38 +297,158 @@ export default function AdminPlayersManager({ players, matches, language, t, onP
         </button>
       </div>
 
+      <div className="bulk-selection-bar">
+        <div>
+          <button className="ghost-button" type="button" onClick={toggleSelectAllVisible}>
+            {allVisibleSelected ? t("cancelSelectAll") : t("selectAll")}
+          </button>
+          <strong>{selectedCountText}</strong>
+        </div>
+        {selectedPlayerIds.length > 0 && (
+          <div className="bulk-actions">
+            <span>{t("bulkActions")}</span>
+            <button className="danger-button" type="button" onClick={deleteSelected}>
+              {t("deleteSelected")}
+            </button>
+            <button className="ghost-button" type="button" onClick={() => setBulkDraft(defaultBulkDraft("add-events"))}>
+              {t("addEvent")}
+            </button>
+            <button className="ghost-button" type="button" onClick={() => setBulkDraft(defaultBulkDraft("remove-events"))}>
+              {t("removeEvent")}
+            </button>
+            <button className="ghost-button" type="button" onClick={() => setBulkDraft(defaultBulkDraft("set-rating"))}>
+              {t("setRating")}
+            </button>
+            <button className="ghost-button" type="button" onClick={clearSelection}>
+              {t("clearSelection")}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {bulkNotice && <div className="status-notice">{bulkNotice}</div>}
+
       <div className="admin-list">
-        {visiblePlayers.map((player) => (
-          <article className="admin-row player-row" key={player.id}>
-            <div className="admin-match-main">
-              <span className="avatar-pill">{player.name.slice(0, 1)}</span>
-              <div>
-                <strong>{player.name}</strong>
-                <p>{player.gender} · {ratingLabel(player.rating, t)}</p>
-                <div className="category-pills">
-                  {player.categories.map((id) => (
-                    <span key={id}>{getCategoryLabel(id, language)}</span>
-                  ))}
+        {visiblePlayers.map((player) => {
+          const selected = selectedSet.has(player.id);
+
+          return (
+            <article
+              className={selected ? "admin-row player-row selected-player-row" : "admin-row player-row"}
+              key={player.id}
+            >
+              <label className="player-select-checkbox" aria-label={`${t("select")} ${player.name}`}>
+                <input
+                  type="checkbox"
+                  checked={selected}
+                  onChange={() => togglePlayer(player.id)}
+                />
+              </label>
+
+              <div className="admin-match-main">
+                <span className="avatar-pill">{player.name.slice(0, 1)}</span>
+                <div>
+                  <strong>{player.name}</strong>
+                  <p>{player.gender} · {ratingLabel(player.rating, t)}</p>
+                  <div className="category-pills">
+                    {player.categories.map((id) => (
+                      <span key={id}>{getCategoryLabel(id, language)}</span>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="player-match-count">
-              <span>{t("matches")}</span>
-              <strong>{matchCount(player.id, player.name)}</strong>
-            </div>
+              <div className="player-match-count">
+                <span>{t("matches")}</span>
+                <strong>{matchCount(player.id, player.name)}</strong>
+              </div>
 
-            <div className="row-actions">
-              <button className="ghost-button" type="button" onClick={() => openEdit(player)}>
-                {t("edit")}
-              </button>
-              <button className="danger-button" type="button" onClick={() => deletePlayer(player.id)}>
-                {t("delete")}
-              </button>
-            </div>
-          </article>
-        ))}
+              <div className="row-actions">
+                <button className="ghost-button" type="button" onClick={() => openEdit(player)}>
+                  {t("edit")}
+                </button>
+                <button className="danger-button" type="button" onClick={() => deletePlayer(player.id)}>
+                  {t("delete")}
+                </button>
+              </div>
+            </article>
+          );
+        })}
       </div>
+
+      {bulkDraft && (
+        <div className="modal-backdrop" role="presentation">
+          <section className="match-modal" role="dialog" aria-modal="true" aria-label={t("bulkActions")}>
+            <div className="modal-header">
+              <div>
+                <p className="eyebrow">{t("bulkActions")}</p>
+                <h2>
+                  {bulkDraft.action === "set-rating"
+                    ? t("setRating")
+                    : bulkDraft.action === "add-events"
+                      ? t("addEvent")
+                      : t("removeEvent")}
+                </h2>
+              </div>
+              <button className="icon-button" type="button" onClick={() => setBulkDraft(null)}>
+                X
+              </button>
+            </div>
+
+            {bulkDraft.action === "set-rating" ? (
+              <form className="match-form" onSubmit={(event) => { event.preventDefault(); applyBulkRating(false); }}>
+                <label>
+                  <span>{t("rating")}</span>
+                  <input
+                    type="number"
+                    value={bulkDraft.rating}
+                    onChange={(event) =>
+                      setBulkDraft((current) => ({ ...current, rating: event.target.value, error: "" }))
+                    }
+                  />
+                </label>
+                {bulkDraft.error && <div className="form-error">{bulkDraft.error}</div>}
+                <div className="form-actions">
+                  <button className="ghost-button" type="button" onClick={() => setBulkDraft(null)}>
+                    {t("cancel")}
+                  </button>
+                  <button className="ghost-button" type="button" onClick={() => applyBulkRating(true)}>
+                    {t("clearRating")}
+                  </button>
+                  <button className="primary-button" type="submit">
+                    {t("apply")}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="match-form">
+                <fieldset className="category-checkboxes">
+                  <legend>{t("selectEvents")}</legend>
+                  {CATEGORIES.map((category) => (
+                    <label key={category.id}>
+                      <input
+                        type="checkbox"
+                        checked={bulkDraft.categoryIds.includes(category.id)}
+                        onChange={() => toggleBulkCategory(category.id)}
+                      />
+                      <span>{category[language]}</span>
+                    </label>
+                  ))}
+                </fieldset>
+                {bulkDraft.error && <div className="form-error">{bulkDraft.error}</div>}
+                <div className="form-actions">
+                  <button className="ghost-button" type="button" onClick={() => setBulkDraft(null)}>
+                    {t("cancel")}
+                  </button>
+                  <button className="primary-button" type="button" onClick={applyBulkEvents}>
+                    {t("apply")}
+                  </button>
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
+      )}
 
       {draft && (
         <PlayerForm

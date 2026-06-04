@@ -1118,7 +1118,60 @@ h2 {
 }
 
 .admin-row.player-row {
-  grid-template-columns: minmax(280px, 1fr) 110px auto;
+  grid-template-columns: 36px minmax(260px, 1fr) 110px auto;
+}
+
+.admin-row.player-row.selected-player-row {
+  border-color: #175cd3;
+  background: #f7fbff;
+  box-shadow: 0 0 0 3px rgba(23, 92, 211, 0.1);
+}
+
+.player-select-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+}
+
+.player-select-checkbox input {
+  width: 24px;
+  height: 24px;
+  accent-color: #175cd3;
+  cursor: pointer;
+}
+
+.bulk-selection-bar {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+  border: 1px solid #dbe5ef;
+  border-radius: 8px;
+  padding: 14px;
+  background: #ffffff;
+}
+
+.bulk-selection-bar > div,
+.bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.bulk-selection-bar strong {
+  color: #33435c;
+}
+
+.bulk-actions {
+  border-top: 1px solid #edf2f7;
+  padding-top: 12px;
+}
+
+.bulk-actions > span {
+  color: #607086;
+  font-size: 13px;
+  font-weight: 900;
 }
 
 .admin-match-main {
@@ -1500,7 +1553,17 @@ h2 {
   }
 
   .admin-row.player-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: 44px 1fr;
+  }
+
+  .admin-row.player-row .player-match-count,
+  .admin-row.player-row .row-actions {
+    grid-column: 1 / -1;
+  }
+
+  .bulk-actions .ghost-button,
+  .bulk-actions .danger-button {
+    flex: 1 1 160px;
   }
 
   .admin-row.match-admin-row {
