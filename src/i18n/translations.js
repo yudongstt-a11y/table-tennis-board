@@ -65,7 +65,10 @@ export const translations = {
     womensOnly: "女子单打仅限女子选手",
     loginTitle: "管理员登录",
     loginSubtitle: "用于维护参赛选手、安排赛程、更新球台和比赛状态。",
-    usernameOrPasswordWrong: "用户名或密码不正确",
+    username: "用户名",
+    password: "密码",
+    login: "登录",
+    usernameOrPasswordWrong: "用户名或密码错误",
     backToSchedule: "返回赛程",
   },
   en: {
@@ -134,7 +137,10 @@ export const translations = {
     womensOnly: "Women's Singles is only available for female players.",
     loginTitle: "Admin Login",
     loginSubtitle: "Maintain players, schedule matches, and update tables and match status.",
-    usernameOrPasswordWrong: "Username or password is incorrect",
+    username: "Username",
+    password: "Password",
+    login: "Login",
+    usernameOrPasswordWrong: "Incorrect username or password",
     backToSchedule: "Back to Schedule",
   },
 };

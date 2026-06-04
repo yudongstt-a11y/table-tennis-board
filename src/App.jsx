@@ -71,7 +71,7 @@ export default function App() {
       return { ok: true };
     }
 
-    return { ok: false, message: "用户名或密码不正确" };
+    return { ok: false, message: "用户名或密码错误" };
   }
 
   function handleLogout() {

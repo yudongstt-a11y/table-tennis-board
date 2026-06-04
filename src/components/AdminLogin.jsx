@@ -4,7 +4,7 @@ import LanguageToggle from "./LanguageToggle.jsx";
 
 export default function AdminLogin({ language, onLanguageChange, onLogin, onBack }) {
   const t = getTranslator(language);
-  const [username, setUsername] = useState("admin");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
@@ -28,7 +28,7 @@ export default function AdminLogin({ language, onLanguageChange, onLogin, onBack
 
         <form className="admin-form" onSubmit={handleSubmit}>
           <label>
-            <span>Username</span>
+            <span>{t("username")}</span>
             <input
               value={username}
               onChange={(event) => setUsername(event.target.value)}
@@ -36,18 +36,17 @@ export default function AdminLogin({ language, onLanguageChange, onLogin, onBack
             />
           </label>
           <label>
-            <span>Password</span>
+            <span>{t("password")}</span>
             <input
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               type="password"
               autoComplete="current-password"
-              placeholder="123456"
             />
           </label>
           {error && <div className="form-error">{error}</div>}
           <button className="primary-button" type="submit">
-            Login
+            {t("login")}
           </button>
           <button className="ghost-button full" type="button" onClick={onBack}>
             {t("backToSchedule")}
