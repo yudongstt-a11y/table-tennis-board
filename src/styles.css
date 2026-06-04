@@ -835,6 +835,11 @@ h2 {
   background: #ffffff;
 }
 
+.admin-row.match-admin-row {
+  grid-template-columns: minmax(260px, 0.9fr) minmax(320px, 1.3fr) auto;
+  align-items: start;
+}
+
 .admin-row.player-row {
   grid-template-columns: minmax(280px, 1fr) 110px auto;
 }
@@ -851,17 +856,6 @@ h2 {
   overflow-wrap: anywhere;
 }
 
-.admin-inline-controls {
-  display: grid;
-  grid-template-columns: minmax(110px, 1fr) 86px minmax(120px, auto);
-  gap: 8px;
-}
-
-.compact-button {
-  min-width: 120px;
-  width: 100%;
-}
-
 .status-notice {
   margin: 0 0 14px;
   border: 1px solid #b7ebc6;
@@ -870,6 +864,117 @@ h2 {
   color: #067647;
   background: #effdf4;
   font-weight: 900;
+}
+
+.match-admin-action {
+  display: grid;
+  gap: 10px;
+}
+
+.waiting-note {
+  margin: 0;
+  border-radius: 14px;
+  padding: 12px;
+  color: #607086;
+  background: #f4f7fb;
+  font-weight: 800;
+}
+
+.result-submitter,
+.finished-admin-block {
+  display: grid;
+  gap: 12px;
+}
+
+.result-submit-heading,
+.finished-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #25344d;
+}
+
+.result-submit-heading span,
+.finished-summary strong {
+  color: #607086;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.winner-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.winner-grid > b {
+  color: #7a8798;
+  font-size: 12px;
+  text-align: center;
+}
+
+.winner-card {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  min-height: 58px;
+  border: 1px solid #d9e3ef;
+  border-radius: 14px;
+  padding: 10px;
+  color: #172033;
+  background: #ffffff;
+  font-weight: 900;
+  text-align: center;
+  white-space: normal;
+}
+
+.winner-card.selected {
+  border-color: #12a36e;
+  background: #effdf4;
+  box-shadow: 0 0 0 3px rgba(18, 163, 110, 0.12);
+}
+
+.winner-card strong {
+  color: #067647;
+  font-size: 12px;
+}
+
+.loser-score-picker {
+  display: grid;
+  gap: 8px;
+}
+
+.loser-score-picker > span {
+  color: #44566f;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.loser-score-picker > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.loser-score-picker button {
+  height: 44px;
+  border: 1px solid #d9e3ef;
+  border-radius: 14px;
+  color: #33435c;
+  background: #f8fbff;
+  font-weight: 900;
+}
+
+.loser-score-picker button.active {
+  color: #ffffff;
+  border-color: #175cd3;
+  background: #175cd3;
+}
+
+.result-submit-button {
+  width: 100%;
 }
 
 .emphasized-input,
@@ -1121,6 +1226,10 @@ h2 {
     grid-template-columns: 1fr;
   }
 
+  .admin-row.match-admin-row {
+    grid-template-columns: 1fr;
+  }
+
   .row-actions {
     justify-content: stretch;
   }
@@ -1172,6 +1281,14 @@ h2 {
   .stats-grid,
   .admin-inline-controls {
     grid-template-columns: 1fr;
+  }
+
+  .winner-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .winner-grid > b {
+    text-align: left;
   }
 
   .category-checkboxes {

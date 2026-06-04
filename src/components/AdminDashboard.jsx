@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { getCategoryLabel } from "../constants/categories.js";
 import { getTranslator } from "../i18n/translations.js";
-import MatchForm, { emptyMatch } from "./MatchForm.jsx";
+import {
+  isFirstTableMatch,
+  startFirstTableMatch,
+  submitMatchResult,
+} from "../utils/matchStatus.js";
+import { resetDemoData } from "../utils/storage.js";
 import AdminPlayersManager from "./AdminPlayersManager.jsx";
 import LanguageToggle from "./LanguageToggle.jsx";
-import { resetDemoData } from "../utils/storage.js";
-import { autoAdvanceTable } from "../utils/matchStatus.js";
+import MatchForm, { emptyMatch } from "./MatchForm.jsx";
+import ResultSubmitter from "./ResultSubmitter.jsx";
 
 function toInputTime(time) {
   return String(time).slice(0, 16);
@@ -92,32 +97,20 @@ export default function AdminDashboard({
   function handleSubmit(event) {
     event.preventDefault();
     const normalized = { ...draft, time: fromInputTime(draft.time) };
-    let nextMatches;
 
     if (editingId) {
-      nextMatches = matches.map((match) =>
-        match.id === editingId ? { ...normalized, id: editingId } : match
+      onMatchesChange(
+        matches.map((match) => (match.id === editingId ? { ...normalized, id: editingId } : match))
       );
     } else {
-      nextMatches = [
+      onMatchesChange([
         ...matches,
         {
           ...normalized,
           id: `m${Date.now()}`,
         },
-      ];
+      ]);
     }
-
-    if (normalized.status === "Finished") {
-      const finishedId = editingId || nextMatches[nextMatches.length - 1].id;
-      const advancedMatches = autoAdvanceTable(nextMatches, finishedId);
-      if (advancedMatches !== nextMatches) {
-        setStatusNotice(t("nextMatchAutoPlaying"));
-      }
-      nextMatches = advancedMatches;
-    }
-
-    onMatchesChange(nextMatches);
 
     closeForm();
   }
@@ -126,28 +119,21 @@ export default function AdminDashboard({
     onMatchesChange(matches.filter((match) => match.id !== id));
   }
 
-  function quickUpdate(id, field, value) {
-    let nextMatches = matches.map((match) => (match.id === id ? { ...match, [field]: value } : match));
-    if (field === "status" && value === "Finished") {
-      const advancedMatches = autoAdvanceTable(nextMatches, id);
-      if (advancedMatches !== nextMatches) {
-        setStatusNotice(t("nextMatchAutoPlaying"));
-      }
-      nextMatches = advancedMatches;
-    }
-    onMatchesChange(nextMatches);
+  function handleStartMatch(matchId) {
+    onMatchesChange(startFirstTableMatch(matches, matchId));
   }
 
-  function submitResult(matchId) {
-    let nextMatches = matches.map((match) =>
-      match.id === matchId ? { ...match, status: "Finished" } : match
-    );
-    const advancedMatches = autoAdvanceTable(nextMatches, matchId);
-    if (advancedMatches !== nextMatches) {
+  function handleSubmitResult(matchId, winnerSide, loserScore) {
+    const before = matches;
+    const after = submitMatchResult(matches, matchId, winnerSide, loserScore);
+    const beforePlaying = before.filter((match) => match.status === "Playing").map((match) => match.id);
+    const afterPlaying = after.filter((match) => match.status === "Playing").map((match) => match.id);
+
+    if (afterPlaying.some((id) => !beforePlaying.includes(id))) {
       setStatusNotice(t("nextMatchAutoPlaying"));
     }
-    nextMatches = advancedMatches;
-    onMatchesChange(nextMatches);
+
+    onMatchesChange(after);
   }
 
   function handlePlayersChange(nextPlayers) {
@@ -157,6 +143,51 @@ export default function AdminDashboard({
 
   function restoreDemoData() {
     onReplaceAllData(resetDemoData());
+  }
+
+  function renderMatchAction(match) {
+    const isFirst = isFirstTableMatch(matches, match.id);
+
+    if (match.status === "Upcoming") {
+      return (
+        <div className="match-admin-action">
+          <span className="status-badge upcoming">{t("upcoming")}</span>
+          {isFirst ? (
+            <button className="primary-button" type="button" onClick={() => handleStartMatch(match.id)}>
+              {t("startMatch")}
+            </button>
+          ) : (
+            <p className="waiting-note">{t("waitingPreviousMatch")}</p>
+          )}
+        </div>
+      );
+    }
+
+    if (match.status === "Playing") {
+      return (
+        <ResultSubmitter
+          match={match}
+          t={t}
+          mode="submit"
+          onSubmit={handleSubmitResult}
+        />
+      );
+    }
+
+    return (
+      <div className="finished-admin-block">
+        <div className="finished-summary">
+          <span className="status-badge finished">{t("finished")}</span>
+          <strong>{t("matchResult")}: {match.score || t("finishedScorePending")}</strong>
+        </div>
+        <ResultSubmitter
+          match={match}
+          t={t}
+          mode="edit"
+          onSubmit={handleSubmitResult}
+        />
+      </div>
+    );
   }
 
   return (
@@ -226,7 +257,7 @@ export default function AdminDashboard({
 
           <section className="admin-list">
             {matches.map((match) => (
-              <article className="admin-row" key={match.id}>
+              <article className="admin-row match-admin-row" key={match.id}>
                 <div className="admin-match-main">
                   <span className="table-pill">{match.table}</span>
                   <div>
@@ -236,31 +267,7 @@ export default function AdminDashboard({
                   </div>
                 </div>
 
-                <div className="admin-inline-controls">
-                  <select
-                    value={match.status}
-                    onChange={(event) => quickUpdate(match.id, "status", event.target.value)}
-                    aria-label="Update match status"
-                  >
-                    <option value="Upcoming">{t("upcoming")}</option>
-                    <option value="Playing">{t("playing")}</option>
-                    <option value="Finished">{t("finished")}</option>
-                  </select>
-                  <input
-                    className={match.status === "Finished" ? "emphasized-input" : ""}
-                    value={match.score}
-                    onChange={(event) => quickUpdate(match.id, "score", event.target.value)}
-                    placeholder={t("score")}
-                    aria-label="Update match score"
-                  />
-                  <button
-                    className="primary-button compact-button"
-                    type="button"
-                    onClick={() => submitResult(match.id)}
-                  >
-                    {t("submitResult")}
-                  </button>
-                </div>
+                {renderMatchAction(match)}
 
                 <div className="row-actions">
                   <button className="ghost-button" type="button" onClick={() => openEdit(match)}>
