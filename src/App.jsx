@@ -147,7 +147,9 @@ export default function App() {
   }
 
   function handleLogin(username, password, rememberMe) {
-    if (username === "admin" && password === "123456") {
+    const normalizedUsername = username.trim().toLowerCase();
+
+    if (normalizedUsername === "admin" && password === "123456") {
       localStorage.removeItem(LEGACY_ADMIN_SESSION_KEY);
 
       if (rememberMe) {
