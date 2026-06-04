@@ -21,7 +21,8 @@ export const translations = {
     score: "比分",
     status: "状态",
     result: "结果",
-    admin: "后台",
+    admin: "Admin",
+    adminEntry: "管理员入口",
     matches: "比赛安排",
     addMatch: "添加比赛",
     edit: "编辑",
@@ -70,6 +71,14 @@ export const translations = {
     login: "登录",
     usernameOrPasswordWrong: "用户名或密码错误",
     backToSchedule: "返回赛程",
+    eventFilter: "项目筛选",
+    filterByEvent: "项目筛选",
+    eventFilterSummary: "项目筛选",
+    selectEvents: "选择比赛项目",
+    selectedCount: "已选 {count} 项",
+    allEvents: "全部项目",
+    clear: "清除",
+    apply: "确定",
   },
   en: {
     appTitle: "Magnolia Cup Table Tennis Schedule Board",
@@ -94,6 +103,7 @@ export const translations = {
     status: "Status",
     result: "Result",
     admin: "Admin",
+    adminEntry: "Admin",
     matches: "Matches",
     addMatch: "Add Match",
     edit: "Edit",
@@ -142,12 +152,24 @@ export const translations = {
     login: "Login",
     usernameOrPasswordWrong: "Incorrect username or password",
     backToSchedule: "Back to Schedule",
+    eventFilter: "Filter by event",
+    filterByEvent: "Filter by event",
+    eventFilterSummary: "Event filter",
+    selectEvents: "Select events",
+    selectedCount: "{count} selected",
+    allEvents: "All events",
+    clear: "Clear",
+    apply: "Apply",
   },
 };
 
 export function getTranslator(language) {
-  return function translate(key) {
-    return translations[language]?.[key] || translations.zh[key] || key;
+  return function translate(key, params = {}) {
+    const template = translations[language]?.[key] || translations.zh[key] || key;
+    return Object.entries(params).reduce(
+      (text, [name, value]) => text.replaceAll(`{${name}}`, String(value)),
+      template
+    );
   };
 }
 

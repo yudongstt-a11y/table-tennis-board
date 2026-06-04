@@ -27,6 +27,7 @@ export default function ScheduleBoard({ matches, players, language, onLanguageCh
   const [selectedPlayerId, setSelectedPlayerId] = useState("");
   const [status, setStatus] = useState("All");
   const [selectedTable, setSelectedTable] = useState("All Tables");
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState([]);
 
   const visibleMatches = useMemo(() => {
     const term = normalize(search);
@@ -37,6 +38,8 @@ export default function ScheduleBoard({ matches, players, language, onLanguageCh
       const matchesStatus = tableMode
         ? ["Upcoming", "Playing"].includes(match.status)
         : status === "All" || match.status === status;
+      const matchesCategory =
+        selectedCategoryIds.length === 0 || selectedCategoryIds.includes(match.categoryId);
       const matchesPlayer =
         !selectedPlayerId ||
         match.playerAId === selectedPlayerId ||
@@ -50,9 +53,9 @@ export default function ScheduleBoard({ matches, players, language, onLanguageCh
         normalize(match.table).includes(term) ||
         normalize(match.round).includes(term);
 
-      return matchesTable && matchesStatus && matchesPlayer && matchesSearch;
+      return matchesTable && matchesStatus && matchesCategory && matchesPlayer && matchesSearch;
     });
-  }, [language, matches, search, selectedPlayerId, status, selectedTable]);
+  }, [language, matches, search, selectedCategoryIds, selectedPlayerId, status, selectedTable]);
 
   const playingCount = matches.filter((match) => match.status === "Playing").length;
   const upcomingCount = matches.filter((match) => match.status === "Upcoming").length;
@@ -92,9 +95,6 @@ export default function ScheduleBoard({ matches, players, language, onLanguageCh
             <span>{playingCount} {t("playing")}</span>
             <strong>{upcomingCount} {t("upcoming")}</strong>
           </div>
-          <button className="ghost-button" type="button" onClick={onAdminClick}>
-            {t("admin")}
-          </button>
         </div>
       </header>
 
@@ -123,6 +123,7 @@ export default function ScheduleBoard({ matches, players, language, onLanguageCh
             search={search}
             status={status}
             selectedTable={selectedTable}
+            selectedCategoryIds={selectedCategoryIds}
             players={players}
             language={language}
             t={t}
@@ -130,11 +131,12 @@ export default function ScheduleBoard({ matches, players, language, onLanguageCh
             onPlayerSelect={handlePlayerSelect}
             onStatusChange={setStatus}
             onTableChange={handleTableChange}
+            onCategoryChange={setSelectedCategoryIds}
           />
 
           <section className="schedule-heading">
             <div>
-              <h2>{selectedTable === "All Tables" ? t("matches") : `${selectedTable}`}</h2>
+              <h2>{selectedTable === "All Tables" ? t("matches") : selectedTable}</h2>
               <p>
                 {visibleMatches.length} {t("matchesShown")}
                 {selectedTable !== "All Tables" ? ` · ${t("upcomingPlayingOnly")}` : ""}
@@ -150,6 +152,12 @@ export default function ScheduleBoard({ matches, players, language, onLanguageCh
           </section>
         </>
       )}
+
+      <footer className="page-footer">
+        <button className="admin-link" type="button" onClick={onAdminClick}>
+          {t("adminEntry")}
+        </button>
+      </footer>
     </main>
   );
 }

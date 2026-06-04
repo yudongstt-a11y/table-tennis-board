@@ -1,4 +1,5 @@
 import { tables } from "../data/demoPlayers.js";
+import EventFilter from "./EventFilter.jsx";
 import PlayerAutocomplete from "./PlayerAutocomplete.jsx";
 
 const statuses = ["All", "Upcoming", "Playing", "Finished"];
@@ -12,6 +13,7 @@ export default function FilterBar({
   search,
   status,
   selectedTable,
+  selectedCategoryIds,
   players,
   language,
   t,
@@ -19,6 +21,7 @@ export default function FilterBar({
   onPlayerSelect,
   onStatusChange,
   onTableChange,
+  onCategoryChange,
 }) {
   return (
     <section className="filter-panel" aria-label="Schedule filters">
@@ -47,6 +50,16 @@ export default function FilterBar({
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="filter-group event-filter-group">
+        <span className="filter-title">{t("eventFilterSummary")}</span>
+        <EventFilter
+          selectedCategoryIds={selectedCategoryIds}
+          language={language}
+          t={t}
+          onCategoryChange={onCategoryChange}
+        />
       </div>
 
       <div className="filter-group table-filter-group">

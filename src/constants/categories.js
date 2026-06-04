@@ -49,7 +49,11 @@ export function categoryIdFromLegacy(value) {
     return "womens_singles";
   }
 
-  if (["mixed_doubles", "(mixed) doubles", "双打", "鍙屾墦", "（混合）双打"].includes(normalized)) {
+  if (
+    ["mixed_doubles", "(mixed) doubles", "双打", "鍙屾墦", "（混合）双打"].includes(
+      normalized
+    )
+  ) {
     return "mixed_doubles";
   }
 
