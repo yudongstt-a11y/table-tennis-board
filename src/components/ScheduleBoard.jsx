@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getCategoryLabel } from "../constants/categories.js";
 import { getTranslator } from "../i18n/translations.js";
 import FilterBar from "./FilterBar.jsx";
@@ -28,6 +28,12 @@ export default function ScheduleBoard({ matches, players, language, onLanguageCh
   const [status, setStatus] = useState("All");
   const [selectedTable, setSelectedTable] = useState("All Tables");
   const [selectedCategoryIds, setSelectedCategoryIds] = useState([]);
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setTick((value) => value + 1), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const visibleMatches = useMemo(() => {
     const term = normalize(search);

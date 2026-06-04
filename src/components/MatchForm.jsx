@@ -1,11 +1,26 @@
 import { CATEGORIES } from "../constants/categories.js";
+import { getMatchFormat, getMatchFormatLabel, getStageFormatLabel } from "../constants/matchFormats.js";
 import { tables } from "../data/demoPlayers.js";
 import PlayerAutocomplete from "./PlayerAutocomplete.jsx";
 
 export const emptyMatch = {
   time: "2026-06-15T09:00",
   table: "Table 1",
+  tableOrder: 1000,
+  eventId: "singles",
   categoryId: "singles",
+  stageId: "stage_001",
+  stageFormat: "round_robin",
+  matchFormat: "best_of_5",
+  winnerGames: 3,
+  defaultMinutes: 25,
+  defaultMatchMinutes: 25,
+  remainingSeconds: null,
+  countdownActive: false,
+  overtime: false,
+  groupId: "",
+  bracketRound: null,
+  bracketPosition: null,
   round: "Group Stage",
   playerAId: "",
   playerAName: "",
@@ -15,13 +30,39 @@ export const emptyMatch = {
   playerBRating: null,
   status: "Upcoming",
   score: "",
+  winnerSide: null,
+  winnerId: null,
+  loserId: null,
+  isBye: false,
 };
 
-export default function MatchForm({ value, players, language, t, title, onChange, onCancel, onSubmit }) {
+export default function MatchForm({ value, players, stages = [], language, t, title, onChange, onCancel, onSubmit }) {
   const isDoubles = value.categoryId === "mixed_doubles";
 
   function updateField(field, nextValue) {
     onChange({ ...value, [field]: nextValue });
+  }
+
+  function updateStage(stageId) {
+    const stage = stages.find((item) => item.id === stageId);
+    if (!stage) {
+      updateField("stageId", stageId);
+      return;
+    }
+
+    const format = getMatchFormat(stage.matchFormat);
+    onChange({
+      ...value,
+      stageId,
+      eventId: stage.eventId,
+      categoryId: stage.eventId,
+      stageFormat: stage.format,
+      matchFormat: stage.matchFormat,
+      winnerGames: format.winnerGames,
+      defaultMinutes: format.defaultMinutes,
+      defaultMatchMinutes: format.defaultMinutes,
+      remainingSeconds: value.status === "Playing" ? format.defaultMinutes * 60 : value.remainingSeconds,
+    });
   }
 
   function selectPlayer(side, player) {
@@ -78,6 +119,17 @@ export default function MatchForm({ value, players, language, t, title, onChange
           </label>
 
           <label>
+            <span>{t("stages")}</span>
+            <select value={value.stageId || ""} onChange={(event) => updateStage(event.target.value)}>
+              {stages.map((stage) => (
+                <option key={stage.id} value={stage.id}>
+                  {language === "zh" ? stage.nameZh : stage.nameEn}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
             <span>{t("category")}</span>
             <select
               value={value.categoryId}
@@ -90,6 +142,12 @@ export default function MatchForm({ value, players, language, t, title, onChange
               ))}
             </select>
           </label>
+
+          <div className="form-hint">
+            {getStageFormatLabel(value.stageFormat, language)} ·{" "}
+            {getMatchFormatLabel(value.matchFormat, language)} ·{" "}
+            {t("defaultDuration")}: {value.defaultMinutes || value.defaultMatchMinutes} {t("minutes")}
+          </div>
 
           <label>
             <span>{t("round")}</span>

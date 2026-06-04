@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-function parseExistingResult(score) {
+function parseExistingResult(score, winnerGames) {
   const parts = String(score || "")
     .split("-")
     .map((part) => Number(part));
@@ -9,13 +9,18 @@ function parseExistingResult(score) {
     return { winnerSide: "", loserScore: 0 };
   }
 
-  if (parts[0] === 3) return { winnerSide: "A", loserScore: parts[1] };
-  if (parts[1] === 3) return { winnerSide: "B", loserScore: parts[0] };
+  if (parts[0] === winnerGames) return { winnerSide: "A", loserScore: parts[1] };
+  if (parts[1] === winnerGames) return { winnerSide: "B", loserScore: parts[0] };
   return { winnerSide: "", loserScore: 0 };
 }
 
 export default function ResultSubmitter({ match, t, mode = "submit", onSubmit }) {
-  const initial = useMemo(() => parseExistingResult(match.score), [match.score]);
+  const winnerGames = match.winnerGames || 3;
+  const loserScoreOptions = Array.from({ length: winnerGames }, (_, index) => index);
+  const initial = useMemo(
+    () => parseExistingResult(match.score, winnerGames),
+    [match.score, winnerGames]
+  );
   const [winnerSide, setWinnerSide] = useState(initial.winnerSide);
   const [loserScore, setLoserScore] = useState(initial.loserScore ?? 0);
   const [error, setError] = useState("");
@@ -46,6 +51,7 @@ export default function ResultSubmitter({ match, t, mode = "submit", onSubmit })
           onClick={() => setWinnerSide("A")}
         >
           <span>{match.playerAName}</span>
+          <small>{winnerGames} {t("gamesToWin")}</small>
           {winnerSide === "A" && <strong>{t("winner")}</strong>}
         </button>
         <b>vs</b>
@@ -55,6 +61,7 @@ export default function ResultSubmitter({ match, t, mode = "submit", onSubmit })
           onClick={() => setWinnerSide("B")}
         >
           <span>{match.playerBName}</span>
+          <small>{winnerGames} {t("gamesToWin")}</small>
           {winnerSide === "B" && <strong>{t("winner")}</strong>}
         </button>
       </div>
@@ -62,7 +69,7 @@ export default function ResultSubmitter({ match, t, mode = "submit", onSubmit })
       <div className="loser-score-picker">
         <span>{t("losingSideGames")}</span>
         <div>
-          {[0, 1, 2].map((value) => (
+          {loserScoreOptions.map((value) => (
             <button
               key={value}
               className={loserScore === value ? "active" : ""}

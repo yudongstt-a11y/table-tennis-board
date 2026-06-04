@@ -2,7 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import ScheduleBoard from "./components/ScheduleBoard.jsx";
 import AdminLogin from "./components/AdminLogin.jsx";
 import AdminDashboard from "./components/AdminDashboard.jsx";
-import { getMatches, getPlayers, saveMatches, savePlayers } from "./utils/storage.js";
+import {
+  getMatches,
+  getPlayers,
+  getStages,
+  saveMatches,
+  savePlayers,
+  saveStages,
+} from "./utils/storage.js";
 import { LANGUAGE_KEY } from "./i18n/translations.js";
 
 const ADMIN_LOGGED_IN_KEY = "adminLoggedIn";
@@ -29,6 +36,7 @@ export default function App() {
   const [path, setPath] = useState(getPath);
   const [matches, setMatches] = useState(() => getMatches());
   const [players, setPlayers] = useState(() => getPlayers());
+  const [stages, setStages] = useState(() => getStages());
   const [language, setLanguage] = useState(() => localStorage.getItem(LANGUAGE_KEY) || "zh");
   const [isLoggedIn, setIsLoggedIn] = useState(() => hasAdminSession());
 
@@ -74,9 +82,16 @@ export default function App() {
     savePlayers(sorted);
   }
 
+  function updateStages(nextStages) {
+    const sorted = [...nextStages].sort((a, b) => a.order - b.order);
+    setStages(sorted);
+    saveStages(sorted);
+  }
+
   function replaceAllData(nextData) {
     setMatches(nextData.matches);
     setPlayers(nextData.players);
+    setStages(nextData.stages);
   }
 
   function handleLogin(username, password, rememberMe) {
@@ -121,7 +136,7 @@ export default function App() {
     );
   }
 
-  if (path === "/admin/dashboard" || path === "/admin/players") {
+  if (path === "/admin/dashboard" || path === "/admin/players" || path === "/admin/stages" || path === "/admin/control") {
     if (!isLoggedIn && !hasAdminSession()) {
       return (
         <AdminLogin
@@ -135,13 +150,23 @@ export default function App() {
 
     return (
       <AdminDashboard
-        initialTab={path === "/admin/players" ? "players" : "matches"}
+        initialTab={
+          path === "/admin/players"
+            ? "players"
+            : path === "/admin/stages"
+              ? "stages"
+              : path === "/admin/control"
+                ? "control"
+                : "matches"
+        }
         language={language}
         matches={sortedMatches}
         players={sortedPlayers}
+        stages={stages}
         onLanguageChange={updateLanguage}
         onMatchesChange={updateMatches}
         onPlayersChange={updatePlayers}
+        onStagesChange={updateStages}
         onReplaceAllData={replaceAllData}
         onLogout={handleLogout}
         onPublicView={() => navigate("/")}

@@ -1,16 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { getCategoryLabel } from "../constants/categories.js";
+import { getMatchFormatLabel } from "../constants/matchFormats.js";
+import { tables } from "../data/demoPlayers.js";
 import { getTranslator } from "../i18n/translations.js";
 import {
   isFirstTableMatch,
+  moveMatchToTable,
   startFirstTableMatch,
   submitMatchResult,
-} from "../utils/matchStatus.js";
+} from "../utils/matchProgression.js";
+import { calculateRemainingSeconds, formatCountdown } from "../utils/matchTimer.js";
 import { resetDemoData } from "../utils/storage.js";
 import AdminPlayersManager from "./AdminPlayersManager.jsx";
+import AdminStagesManager from "./AdminStagesManager.jsx";
 import LanguageToggle from "./LanguageToggle.jsx";
 import MatchForm, { emptyMatch } from "./MatchForm.jsx";
 import ResultSubmitter from "./ResultSubmitter.jsx";
+import TournamentControl from "./TournamentControl.jsx";
 
 function toInputTime(time) {
   return String(time).slice(0, 16);
@@ -52,9 +58,11 @@ export default function AdminDashboard({
   language,
   matches,
   players,
+  stages,
   onLanguageChange,
   onMatchesChange,
   onPlayersChange,
+  onStagesChange,
   onReplaceAllData,
   onLogout,
   onPublicView,
@@ -64,10 +72,17 @@ export default function AdminDashboard({
   const [draft, setDraft] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [statusNotice, setStatusNotice] = useState("");
+  const [moveDraft, setMoveDraft] = useState({});
+  const [, setTick] = useState(0);
 
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setTick((value) => value + 1), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const counts = useMemo(
     () => ({
@@ -80,8 +95,20 @@ export default function AdminDashboard({
   );
 
   function openAdd() {
+    const stage = stages[0];
     setEditingId(null);
-    setDraft({ ...emptyMatch });
+    setDraft({
+      ...emptyMatch,
+      stageId: stage?.id || emptyMatch.stageId,
+      eventId: stage?.eventId || emptyMatch.eventId,
+      categoryId: stage?.eventId || emptyMatch.categoryId,
+      stageFormat: stage?.format || emptyMatch.stageFormat,
+      matchFormat: stage?.matchFormat || emptyMatch.matchFormat,
+      winnerGames: stage?.winnerGames || emptyMatch.winnerGames,
+      defaultMinutes: stage?.defaultMatchMinutes || emptyMatch.defaultMinutes,
+      defaultMatchMinutes: stage?.defaultMatchMinutes || emptyMatch.defaultMatchMinutes,
+      tableOrder: Date.now(),
+    });
   }
 
   function openEdit(match) {
@@ -94,22 +121,31 @@ export default function AdminDashboard({
     setEditingId(null);
   }
 
+  function normalizeDraft() {
+    const stage = stages.find((item) => item.id === draft.stageId);
+    return {
+      ...draft,
+      time: fromInputTime(draft.time),
+      eventId: draft.eventId || draft.categoryId,
+      tableOrder: Number.isFinite(Number(draft.tableOrder)) ? Number(draft.tableOrder) : Date.now(),
+      stageFormat: draft.stageFormat || stage?.format || "round_robin",
+      matchFormat: draft.matchFormat || stage?.matchFormat || "best_of_5",
+      winnerGames: draft.winnerGames || stage?.winnerGames || 3,
+      defaultMinutes: draft.defaultMinutes || stage?.defaultMatchMinutes || 25,
+      defaultMatchMinutes: draft.defaultMatchMinutes || draft.defaultMinutes || stage?.defaultMatchMinutes || 25,
+    };
+  }
+
   function handleSubmit(event) {
     event.preventDefault();
-    const normalized = { ...draft, time: fromInputTime(draft.time) };
+    const normalized = normalizeDraft();
 
     if (editingId) {
       onMatchesChange(
         matches.map((match) => (match.id === editingId ? { ...normalized, id: editingId } : match))
       );
     } else {
-      onMatchesChange([
-        ...matches,
-        {
-          ...normalized,
-          id: `m${Date.now()}`,
-        },
-      ]);
+      onMatchesChange([...matches, { ...normalized, id: `m${Date.now()}` }]);
     }
 
     closeForm();
@@ -124,9 +160,10 @@ export default function AdminDashboard({
   }
 
   function handleSubmitResult(matchId, winnerSide, loserScore) {
-    const before = matches;
+    const beforePlaying = matches
+      .filter((match) => match.status === "Playing")
+      .map((match) => match.id);
     const after = submitMatchResult(matches, matchId, winnerSide, loserScore);
-    const beforePlaying = before.filter((match) => match.status === "Playing").map((match) => match.id);
     const afterPlaying = after.filter((match) => match.status === "Playing").map((match) => match.id);
 
     if (afterPlaying.some((id) => !beforePlaying.includes(id))) {
@@ -134,6 +171,18 @@ export default function AdminDashboard({
     }
 
     onMatchesChange(after);
+  }
+
+  function handleMoveMatch(matchId, targetTable) {
+    const moving = matches.find((match) => match.id === matchId);
+    if (!moving || moving.status === "Finished" || !targetTable) return;
+
+    if (moving.status === "Playing" && !window.confirm(t("confirmMovePlaying"))) {
+      return;
+    }
+
+    onMatchesChange(moveMatchToTable(matches, matchId, targetTable));
+    setMoveDraft((current) => ({ ...current, [matchId]: "" }));
   }
 
   function handlePlayersChange(nextPlayers) {
@@ -145,8 +194,64 @@ export default function AdminDashboard({
     onReplaceAllData(resetDemoData());
   }
 
+  function renderCountdown(match) {
+    if (match.status !== "Playing") return null;
+
+    const remaining = calculateRemainingSeconds(match);
+    return (
+      <div className="countdown-line compact-countdown">
+        <span>{t("countdown")}</span>
+        {remaining <= 0 ? (
+          <strong className="overtime-label">{t("overtime")}</strong>
+        ) : (
+          <strong>{formatCountdown(remaining)}</strong>
+        )}
+      </div>
+    );
+  }
+
+  function renderMoveTable(match) {
+    if (match.status === "Finished" || match.isBye) {
+      return <span className="subtle small-text">{t("finished")}</span>;
+    }
+
+    return (
+      <div className="move-table-row">
+        <select
+          value={moveDraft[match.id] || ""}
+          onChange={(event) =>
+            setMoveDraft((current) => ({ ...current, [match.id]: event.target.value }))
+          }
+        >
+          <option value="">{t("selectTargetTable")}</option>
+          {tables
+            .filter((table) => table !== match.table)
+            .map((table) => (
+              <option key={table} value={table}>{table}</option>
+            ))}
+        </select>
+        <button
+          className="ghost-button"
+          type="button"
+          disabled={!moveDraft[match.id]}
+          onClick={() => handleMoveMatch(match.id, moveDraft[match.id])}
+        >
+          {t("moveTable")}
+        </button>
+      </div>
+    );
+  }
+
   function renderMatchAction(match) {
     const isFirst = isFirstTableMatch(matches, match.id);
+
+    if (match.isBye) {
+      return (
+        <div className="match-admin-action">
+          <span className="status-badge finished">{t("advancedByBye")}</span>
+        </div>
+      );
+    }
 
     if (match.status === "Upcoming") {
       return (
@@ -164,14 +269,7 @@ export default function AdminDashboard({
     }
 
     if (match.status === "Playing") {
-      return (
-        <ResultSubmitter
-          match={match}
-          t={t}
-          mode="submit"
-          onSubmit={handleSubmitResult}
-        />
-      );
+      return <ResultSubmitter match={match} t={t} mode="submit" onSubmit={handleSubmitResult} />;
     }
 
     return (
@@ -180,12 +278,7 @@ export default function AdminDashboard({
           <span className="status-badge finished">{t("finished")}</span>
           <strong>{t("matchResult")}: {match.score || t("finishedScorePending")}</strong>
         </div>
-        <ResultSubmitter
-          match={match}
-          t={t}
-          mode="edit"
-          onSubmit={handleSubmitResult}
-        />
+        <ResultSubmitter match={match} t={t} mode="edit" onSubmit={handleSubmitResult} />
       </div>
     );
   }
@@ -215,20 +308,16 @@ export default function AdminDashboard({
       </header>
 
       <nav className="top-tabs" aria-label="Admin sections">
-        <button
-          className={activeTab === "matches" ? "active" : ""}
-          type="button"
-          onClick={() => setActiveTab("matches")}
-        >
-          {t("matches")}
-        </button>
-        <button
-          className={activeTab === "players" ? "active" : ""}
-          type="button"
-          onClick={() => setActiveTab("players")}
-        >
-          {t("players")}
-        </button>
+        {["matches", "players", "stages", "control"].map((tab) => (
+          <button
+            className={activeTab === tab ? "active" : ""}
+            type="button"
+            onClick={() => setActiveTab(tab)}
+            key={tab}
+          >
+            {t(tab)}
+          </button>
+        ))}
       </nav>
 
       {activeTab === "players" ? (
@@ -238,6 +327,17 @@ export default function AdminDashboard({
           language={language}
           t={t}
           onPlayersChange={handlePlayersChange}
+        />
+      ) : activeTab === "stages" ? (
+        <AdminStagesManager stages={stages} language={language} t={t} onStagesChange={onStagesChange} />
+      ) : activeTab === "control" ? (
+        <TournamentControl
+          matches={matches}
+          language={language}
+          t={t}
+          onMatchesChange={onMatchesChange}
+          onSubmitResult={handleSubmitResult}
+          onMoveMatch={handleMoveMatch}
         />
       ) : (
         <>
@@ -259,17 +359,22 @@ export default function AdminDashboard({
             {matches.map((match) => (
               <article className="admin-row match-admin-row" key={match.id}>
                 <div className="admin-match-main">
-                  <span className="table-pill">{match.table}</span>
+                  <span className="table-pill">{match.table || t("advancedByBye")}</span>
                   <div>
                     <strong>{displayTime(match.time)}</strong>
-                    <p>{getCategoryLabel(match.categoryId, language)} · {match.round}</p>
-                    <p>{match.playerAName} vs {match.playerBName}</p>
+                    <p>
+                      {getCategoryLabel(match.categoryId, language)} · {match.round} ·{" "}
+                      {getMatchFormatLabel(match.matchFormat, language)}
+                    </p>
+                    <p>{match.isBye ? t("advancedByBye") : `${match.playerAName} vs ${match.playerBName}`}</p>
+                    {renderCountdown(match)}
                   </div>
                 </div>
 
                 {renderMatchAction(match)}
 
                 <div className="row-actions">
+                  {renderMoveTable(match)}
                   <button className="ghost-button" type="button" onClick={() => openEdit(match)}>
                     {t("edit")}
                   </button>
@@ -287,6 +392,7 @@ export default function AdminDashboard({
         <MatchForm
           value={draft}
           players={players}
+          stages={stages}
           language={language}
           t={t}
           title={editingId ? t("editMatch") : t("addMatch")}

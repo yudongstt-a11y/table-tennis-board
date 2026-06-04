@@ -35,7 +35,6 @@ export function categoryIdFromLegacy(value) {
     [
       "singles",
       "综合单打",
-      "缁煎悎鍗曟墦",
       "division 1",
       "division 2",
       "division 3",
@@ -45,15 +44,11 @@ export function categoryIdFromLegacy(value) {
     return "singles";
   }
 
-  if (["womens_singles", "women's singles", "女子单打", "濂冲瓙鍗曟墦"].includes(normalized)) {
+  if (["womens_singles", "women's singles", "女子单打"].includes(normalized)) {
     return "womens_singles";
   }
 
-  if (
-    ["mixed_doubles", "(mixed) doubles", "双打", "鍙屾墦", "（混合）双打"].includes(
-      normalized
-    )
-  ) {
+  if (["mixed_doubles", "(mixed) doubles", "双打", "（混合）双打"].includes(normalized)) {
     return "mixed_doubles";
   }
 
