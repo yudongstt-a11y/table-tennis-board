@@ -24,6 +24,22 @@ import {
   saveSeedings,
   saveGroups,
 } from "./utils/storage.js";
+import {
+  DATA_SOURCE,
+  importOfficialDoublesPairsData,
+  loadAllData,
+  saveBreaksData,
+  saveEventTimelineData,
+  saveGroupsData,
+  saveMatchesData,
+  savePlayersData,
+  saveSeedingsData,
+  saveStagesData,
+  saveTableControlsData,
+  saveTournamentControlData,
+  saveTournamentSettingsData,
+  subscribeToTournamentData,
+} from "./services/dataRepository.js";
 import { LANGUAGE_KEY } from "./i18n/translations.js";
 
 const ADMIN_LOGGED_IN_KEY = "adminLoggedIn";
@@ -58,6 +74,7 @@ export default function App() {
   const [eventTimeline, setEventTimeline] = useState(() => getEventTimeline());
   const [seedings, setSeedings] = useState(() => getSeedings());
   const [groups, setGroups] = useState(() => getGroups());
+  const [dataSourceError, setDataSourceError] = useState("");
   const [language, setLanguage] = useState(() => localStorage.getItem(LANGUAGE_KEY) || "zh");
   const [isLoggedIn, setIsLoggedIn] = useState(() => hasAdminSession());
 
@@ -65,6 +82,26 @@ export default function App() {
     const onPopState = () => setPath(getPath());
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    let unsubscribe = () => {};
+    loadAllData().then((nextData) => {
+      if (!active) return;
+      replaceAllData(nextData);
+      setDataSourceError(nextData.dataSourceError || "");
+      unsubscribe = subscribeToTournamentData(() => {
+        loadAllData().then((freshData) => {
+          replaceAllData(freshData);
+          setDataSourceError(freshData.dataSourceError || "");
+        });
+      });
+    });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -110,6 +147,7 @@ export default function App() {
     const sorted = [...nextMatches].sort((a, b) => new Date(a.time) - new Date(b.time));
     setMatches(sorted);
     saveMatches(sorted);
+    saveMatchesData(sorted).catch((error) => setDataSourceError(error.message));
   }
 
   function updateLanguage(nextLanguage) {
@@ -121,32 +159,42 @@ export default function App() {
     const sorted = [...nextPlayers].sort((a, b) => a.name.localeCompare(b.name));
     setPlayers(sorted);
     savePlayers(sorted);
+    savePlayersData(sorted).catch((error) => setDataSourceError(error.message));
   }
 
   function updateStages(nextStages) {
     const sorted = [...nextStages].sort((a, b) => a.order - b.order);
     setStages(sorted);
     saveStages(sorted);
+    saveStagesData(sorted).catch((error) => setDataSourceError(error.message));
   }
 
   function updateTableControls(nextTableControls) {
     setTableControls(nextTableControls);
     saveTableControls(nextTableControls);
+    saveTableControlsData(nextTableControls).catch((error) => setDataSourceError(error.message));
   }
 
   function updateBreaks(nextBreaks) {
     setBreaks(nextBreaks);
     saveBreaks(nextBreaks);
+    saveBreaksData(nextBreaks).catch((error) => setDataSourceError(error.message));
   }
 
   function updateTournamentControl(nextTournamentControl) {
     setTournamentControl(nextTournamentControl);
     saveTournamentControl(nextTournamentControl);
+    saveTournamentControlData(nextTournamentControl, tournamentSettings).catch((error) =>
+      setDataSourceError(error.message)
+    );
   }
 
   function updateTournamentSettings(nextTournamentSettings) {
     setTournamentSettings(nextTournamentSettings);
     saveTournamentSettings(nextTournamentSettings);
+    saveTournamentSettingsData(nextTournamentSettings, tournamentControl).catch((error) =>
+      setDataSourceError(error.message)
+    );
     setTableControls((current) => {
       const nextControls = Object.fromEntries(
         nextTournamentSettings.tableNames.map((table) => [
@@ -155,6 +203,7 @@ export default function App() {
         ])
       );
       saveTableControls(nextControls);
+      saveTableControlsData(nextControls).catch((error) => setDataSourceError(error.message));
       return nextControls;
     });
   }
@@ -165,16 +214,19 @@ export default function App() {
     );
     setEventTimeline(sorted);
     saveEventTimeline(sorted);
+    saveEventTimelineData(sorted).catch((error) => setDataSourceError(error.message));
   }
 
   function updateSeedings(nextSeedings) {
     setSeedings(nextSeedings);
     saveSeedings(nextSeedings);
+    saveSeedingsData(nextSeedings).catch((error) => setDataSourceError(error.message));
   }
 
   function updateGroups(nextGroups) {
     setGroups(nextGroups);
     saveGroups(nextGroups);
+    saveGroupsData(nextGroups).catch((error) => setDataSourceError(error.message));
   }
 
   function updateTournamentState(nextMatches, nextTableControls) {
@@ -193,6 +245,11 @@ export default function App() {
     setEventTimeline(nextData.eventTimeline);
     setSeedings(nextData.seedings);
     setGroups(nextData.groups);
+    setDataSourceError(nextData.dataSourceError || "");
+  }
+
+  function importOfficialDoublesPairs(playersForImport) {
+    importOfficialDoublesPairsData(playersForImport).catch((error) => setDataSourceError(error.message));
   }
 
   function handleLogin(username, password, rememberMe) {
@@ -282,6 +339,8 @@ export default function App() {
         tournamentControl={tournamentControl}
         tournamentSettings={tournamentSettings}
         eventTimeline={eventTimeline}
+        dataSource={DATA_SOURCE}
+        dataSourceError={dataSourceError}
         seedings={seedings}
         groups={groups}
         onLanguageChange={updateLanguage}
@@ -297,6 +356,7 @@ export default function App() {
         onGroupsChange={updateGroups}
         onTournamentStateChange={updateTournamentState}
         onReplaceAllData={replaceAllData}
+        onOfficialDoublesImport={importOfficialDoublesPairs}
         onLogout={handleLogout}
         onPublicView={() => navigate("/")}
       />
@@ -311,6 +371,7 @@ export default function App() {
       groups={groups}
       tournamentSettings={tournamentSettings}
       eventTimeline={eventTimeline}
+      dataSourceError={dataSourceError}
       language={language}
       tournamentControl={tournamentControl}
       onLanguageChange={updateLanguage}

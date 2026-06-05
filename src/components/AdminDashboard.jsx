@@ -65,6 +65,8 @@ export default function AdminDashboard({
   tournamentControl,
   tournamentSettings,
   eventTimeline,
+  dataSource,
+  dataSourceError,
   seedings,
   groups,
   onLanguageChange,
@@ -80,6 +82,7 @@ export default function AdminDashboard({
   onGroupsChange,
   onTournamentStateChange,
   onReplaceAllData,
+  onOfficialDoublesImport,
   onLogout,
   onPublicView,
 }) {
@@ -352,6 +355,8 @@ export default function AdminDashboard({
         <TournamentSetup
           settings={tournamentSettings}
           eventTimeline={eventTimeline}
+          dataSource={dataSource}
+          dataSourceError={dataSourceError}
           language={language}
           t={t}
           onSettingsChange={onTournamentSettingsChange}
@@ -364,6 +369,7 @@ export default function AdminDashboard({
           language={language}
           t={t}
           onPlayersChange={handlePlayersChange}
+          onOfficialDoublesImport={onOfficialDoublesImport}
         />
       ) : activeTab === "stages" ? (
         <AdminStagesManager

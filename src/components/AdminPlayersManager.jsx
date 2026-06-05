@@ -45,7 +45,15 @@ function defaultBulkDraft(action) {
   };
 }
 
-export default function AdminPlayersManager({ players, matches, language, t, onPlayersChange }) {
+export default function AdminPlayersManager({
+  players,
+  matches,
+  language,
+  dataSource,
+  t,
+  onPlayersChange,
+  onOfficialDoublesImport,
+}) {
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState("all");
   const [sort, setSort] = useState("name");
@@ -195,6 +203,7 @@ export default function AdminPlayersManager({ players, matches, language, t, onP
       .map((player, index) => prepareOfficialPlayer(player, null, index));
 
     onPlayersChange([...nextPlayers, ...additions]);
+    onOfficialDoublesImport?.([...nextPlayers, ...additions]);
     setSelectedPlayerIds([]);
     setBulkNotice(
       t("officialImportComplete", {
@@ -359,7 +368,7 @@ export default function AdminPlayersManager({ players, matches, language, t, onP
         </div>
         <div className="row-actions">
           <button className="ghost-button" type="button" onClick={importOfficialEntries}>
-            {t("importOfficialEntries")}
+            {dataSource === "supabase" ? t("importOfficialEntriesToSupabase") : t("importOfficialEntries")}
           </button>
           <button className="primary-button" type="button" onClick={openAdd}>
             {t("addPlayer")}

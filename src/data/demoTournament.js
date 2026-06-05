@@ -1,12 +1,22 @@
 export const defaultTournamentSettings = {
   id: "tournament_main",
-  nameZh: "玉兰杯乒乓球大赛",
-  nameEn: "Yulan Cup Table Tennis Tournament",
-  date: "2026-06-15",
-  venue: "Star Table Tennis, 31 Dover Street, Albion QLD 4010",
+  slug: "yulan-cup-2026",
+  nameZh: "2026第二届“玉兰杯”乒乓球大赛",
+  nameEn: "2026 2nd Yulan Cup Table Tennis Tournament",
+  date: "2026-06-06",
+  venue: "Wynnum Table Tennis Association, 38 Curtis St, Manly QLD 4179",
   organiser: "Star Table Tennis",
-  tableCount: 6,
-  tableNames: ["Table 1", "Table 2", "Table 3", "Table 4", "Table 5", "Table 6"],
+  tableCount: 8,
+  tableNames: [
+    "Table 1",
+    "Table 2",
+    "Table 3",
+    "Table 4",
+    "Table 5",
+    "Table 6",
+    "Table 7",
+    "Table 8",
+  ],
   notes: "",
 };
 

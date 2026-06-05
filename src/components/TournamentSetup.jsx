@@ -18,6 +18,8 @@ const emptyTimelineItem = {
 export default function TournamentSetup({
   settings,
   eventTimeline,
+  dataSource,
+  dataSourceError,
   language,
   t,
   onSettingsChange,
@@ -98,6 +100,13 @@ export default function TournamentSetup({
           <div>
             <p className="eyebrow">{t("tournamentSetup")}</p>
             <h2>{t("tournamentSetup")}</h2>
+            <p className={dataSource === "localStorage" || dataSourceError ? "data-source-warning" : "subtle"}>
+              {t("dataSource")}: {dataSource === "supabase" ? "Supabase" : "localStorage"}
+              {dataSourceError ? ` · ${dataSourceError}` : ""}
+            </p>
+            {(dataSource === "localStorage" || dataSourceError) && (
+              <p className="data-source-warning">{t("localStorageWarning")}</p>
+            )}
           </div>
           <button className="primary-button" type="submit">
             {t("saveTournamentSetup")}

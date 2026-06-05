@@ -859,6 +859,13 @@ h2 {
   line-height: 1.35;
 }
 
+.data-source-warning {
+  margin: 6px 0 0;
+  color: #b42318;
+  font-size: 13px;
+  font-weight: 900;
+}
+
 .form-warning {
   grid-column: 1 / -1;
   border-radius: 8px;
