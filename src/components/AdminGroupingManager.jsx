@@ -47,6 +47,10 @@ function getStageEventId(stage) {
   return stage?.eventId || stage?.event_id || "";
 }
 
+function getMatchEventId(match) {
+  return match?.eventId || match?.event_id || match?.categoryId || "";
+}
+
 function getStageFormat(stage) {
   return stage?.format || stage?.stage_format || "";
 }
@@ -287,7 +291,7 @@ export default function AdminGroupingManager({
     setGenerateDraft({
       tableCount: tournamentSettings.tableCount,
       selectedTables: tournamentSettings.tableNames.slice(0, tournamentSettings.tableCount),
-      scope: "current_stage",
+      scope: "current_event",
       startTime: "",
       error: "",
     });
@@ -354,7 +358,8 @@ export default function AdminGroupingManager({
       return;
     }
 
-    const targetStages = stagesForScope(generateDraft.scope)
+    const effectiveScope = generateDraft.scope === "all_events" ? "all_events" : "current_event";
+    const targetStages = stagesForScope(effectiveScope)
       .filter((stage) => groupsForStage(stage.id).length)
       .sort((a, b) => Number(a.order) - Number(b.order));
     const stagesByOrder = new Map();
@@ -372,7 +377,10 @@ export default function AdminGroupingManager({
     }
 
     const targetStageIds = new Set(targetStages.map((stage) => stage.id));
-    const retainedMatches = matches.filter((match) => !targetStageIds.has(match.stageId));
+    const retainedMatches =
+      effectiveScope === "current_event"
+        ? matches.filter((match) => getMatchEventId(match) !== eventId)
+        : matches.filter((match) => !targetStageIds.has(match.stageId));
     const startIso = generateDraft.startTime
       ? brisbaneDateTimeToIso(tournamentSettings.date || "2026-06-06", generateDraft.startTime)
       : "";
@@ -943,7 +951,6 @@ export default function AdminGroupingManager({
                     setGenerateDraft((draft) => ({ ...draft, scope: event.target.value, error: "" }))
                   }
                 >
-                  <option value="current_stage">{t("currentStage")}</option>
                   <option value="current_event">{t("currentEventStages")}</option>
                   <option value="all_events">{t("allEventStages")}</option>
                 </select>
