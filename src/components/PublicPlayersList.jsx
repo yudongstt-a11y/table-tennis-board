@@ -92,25 +92,28 @@ export default function PublicPlayersList({ players, matches, language, t }) {
         </label>
       </div>
 
-      <div className="player-grid">
-        {visiblePlayers.map((player) => (
+      <div className="player-list">
+        {visiblePlayers.map((player, index) => (
           <button
-            className="player-card"
+            className="player-row public-player-row"
             key={player.id}
             type="button"
             onClick={() => setSelectedPlayer(player)}
           >
-            <div>
+            <strong className="player-rank">#{index + 1}</strong>
+            <div className="player-row-main">
               <strong>{player.name}</strong>
-              <span>{player.gender}</span>
+              <p>{player.gender} · {ratingLabel(player.rating, t)}</p>
+              <div className="category-pills">
+                {player.categories.map((id) => (
+                  <span key={id}>{getCategoryLabel(id, language)}</span>
+                ))}
+              </div>
             </div>
-            <p>{ratingLabel(player.rating, t)}</p>
-            <div className="category-pills">
-              {player.categories.map((id) => (
-                <span key={id}>{getCategoryLabel(id, language)}</span>
-              ))}
+            <div className="player-row-meta">
+              <span>{upcomingCountFor(player.id, player.name, matches)}</span>
+              <strong>{t("upcoming")}</strong>
             </div>
-            <small>{upcomingCountFor(player.id, player.name, matches)} {t("upcoming")}</small>
           </button>
         ))}
       </div>

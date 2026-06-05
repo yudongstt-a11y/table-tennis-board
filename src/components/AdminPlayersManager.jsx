@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { CATEGORIES, getCategoryLabel } from "../constants/categories.js";
 import {
   officialDoublesPairs,
@@ -399,7 +399,7 @@ export default function AdminPlayersManager({ players, matches, language, t, onP
       {bulkNotice && <div className="status-notice">{bulkNotice}</div>}
 
       <div className="admin-list">
-        {visiblePlayers.map((player) => {
+        {visiblePlayers.map((player, index) => {
           const selected = selectedSet.has(player.id);
 
           return (
@@ -414,6 +414,8 @@ export default function AdminPlayersManager({ players, matches, language, t, onP
                   onChange={() => togglePlayer(player.id)}
                 />
               </label>
+
+              <strong className="player-rank">#{index + 1}</strong>
 
               <div className="admin-match-main">
                 <span className="avatar-pill">{player.name.slice(0, 1)}</span>
@@ -556,3 +558,4 @@ export default function AdminPlayersManager({ players, matches, language, t, onP
     </section>
   );
 }
+

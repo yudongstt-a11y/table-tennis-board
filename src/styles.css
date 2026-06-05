@@ -683,49 +683,76 @@ h2 {
   box-shadow: none;
 }
 
-.player-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+.player-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.player-card {
+.player-row {
   display: grid;
-  gap: 12px;
-  min-height: 178px;
-  border: 1px solid #dbe5ef;
-  border-radius: 8px;
-  padding: 16px;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  min-height: 84px;
+  border: 1px solid #dbe4f0;
+  border-radius: 14px;
+  padding: 14px 18px;
   color: #172033;
   background: #ffffff;
+}
+
+.public-player-row {
+  width: 100%;
   text-align: left;
+  cursor: pointer;
   box-shadow: 0 10px 26px rgba(25, 42, 70, 0.06);
 }
 
-.player-card:hover {
+.public-player-row:hover {
   border-color: #175cd3;
 }
 
-.player-card div:first-child {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.player-card strong {
-  font-size: 20px;
-}
-
-.player-card p {
-  margin-bottom: 0;
-  color: #175cd3;
+.player-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border-radius: 12px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  font-size: 18px;
   font-weight: 900;
 }
 
-.player-card small {
+.player-row-main {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.player-row-main > strong {
+  font-size: 18px;
+}
+
+.player-row-main p {
+  margin: 0;
   color: #607086;
   font-weight: 800;
+}
+
+.player-row-meta {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  color: #607086;
+  font-weight: 800;
+}
+
+.player-row-meta span {
+  color: #175cd3;
+  font-size: 20px;
+  font-weight: 900;
 }
 
 .category-pills {
@@ -1400,7 +1427,7 @@ h2 {
 }
 
 .admin-row.player-row {
-  grid-template-columns: 36px minmax(260px, 1fr) 110px auto;
+  grid-template-columns: 36px 64px minmax(260px, 1fr) 110px auto;
 }
 
 .admin-row.player-row.selected-player-row {
@@ -1869,9 +1896,22 @@ h2 {
   }
 
   .list-tools,
-  .list-tools.compact,
-  .player-grid {
+  .list-tools.compact {
     grid-template-columns: 1fr;
+  }
+
+  .player-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .player-rank {
+    justify-content: flex-start;
+    padding: 0 12px;
+  }
+
+  .player-row-meta {
+    justify-items: start;
   }
 
   .admin-row {
@@ -1882,6 +1922,8 @@ h2 {
     grid-template-columns: 44px 1fr;
   }
 
+  .admin-row.player-row .player-rank,
+  .admin-row.player-row .admin-match-main,
   .admin-row.player-row .player-match-count,
   .admin-row.player-row .row-actions {
     grid-column: 1 / -1;
