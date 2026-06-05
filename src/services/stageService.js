@@ -1,4 +1,19 @@
 import { loadAllData, saveStagesData } from "./dataRepository.js";
+import { isSupabaseMode } from "../config/dataSource.js";
+import { supabase, supabaseConfigError } from "../lib/supabaseClient.js";
+import { isUuid } from "./supabaseMappers.js";
+
+async function run(query) {
+  const { data, error } = await query;
+  if (error) throw error;
+  return data;
+}
+
+async function resolveTournamentId(tournamentId) {
+  if (tournamentId) return tournamentId;
+  const data = await loadAllData();
+  return data.tournamentSettings?.id;
+}
 
 function stripGeneratedFields(payload) {
   const copy = { ...payload };
@@ -61,6 +76,12 @@ export async function saveStages(stages) {
 }
 
 export async function saveStage(stage) {
+  if (isSupabaseMode()) {
+    return stage.id && isUuid(stage.id)
+      ? updateStage(stage.id, stage)
+      : createStage(stage.tournamentId, stage);
+  }
+
   const data = await loadAllData();
   const nextStages = data.stages.some((item) => item.id === stage.id)
     ? data.stages.map((item) => (item.id === stage.id ? stage : item))
@@ -68,11 +89,30 @@ export async function saveStage(stage) {
   return saveStagesData(nextStages);
 }
 
-export async function createStage(_tournamentId, stage) {
-  return saveStage(stage);
+export async function createStage(tournamentId, stage) {
+  if (!isSupabaseMode()) return saveStage(stage);
+  if (!supabase) throw new Error(supabaseConfigError);
+
+  const resolvedTournamentId = await resolveTournamentId(tournamentId);
+  const payload = stripGeneratedFields(toStageRow(stage, resolvedTournamentId));
+  delete payload.id;
+
+  console.log("STAGE INSERT PAYLOAD", payload);
+
+  const data = await run(supabase.from("stages").insert(payload).select().single());
+  return normalizeStage(data);
 }
 
 export async function updateStage(stageId, updates) {
+  if (isSupabaseMode()) {
+    if (!supabase) throw new Error(supabaseConfigError);
+    const resolvedTournamentId = await resolveTournamentId(updates.tournamentId);
+    const payload = stripGeneratedFields(toStageRow(updates, resolvedTournamentId));
+    delete payload.id;
+    const data = await run(supabase.from("stages").update(payload).eq("id", stageId).select().single());
+    return normalizeStage(data);
+  }
+
   const data = await loadAllData();
   const existing = data.stages.find((stage) => stage.id === stageId);
   if (!existing) throw new Error("Stage not found");
@@ -80,6 +120,12 @@ export async function updateStage(stageId, updates) {
 }
 
 export async function deleteStage(stageId) {
+  if (isSupabaseMode()) {
+    if (!supabase) throw new Error(supabaseConfigError);
+    await run(supabase.from("stages").delete().eq("id", stageId));
+    return getStages();
+  }
+
   const data = await loadAllData();
   return saveStagesData(data.stages.filter((stage) => stage.id !== stageId));
 }

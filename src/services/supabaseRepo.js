@@ -304,8 +304,32 @@ export async function saveDoublesPairs(pairs, players = []) {
 }
 
 export async function saveStages(stages) {
-  const data = await safeReplaceRows("stages", stages, stageToDb, "stage_order", ["next_stage_config"]);
-  return data.map(stageFromDb);
+  const id = await tournamentId();
+  const existing = await run(supabase.from("stages").select("*").eq("tournament_id", id));
+  const existingIds = new Set(existing.map((stage) => stage.id));
+  const incomingIds = new Set(stages.map((stage) => stage.id).filter(isUuid));
+  const deleteIds = existing.filter((stage) => !incomingIds.has(stage.id)).map((stage) => stage.id);
+
+  if (deleteIds.length) {
+    await run(supabase.from("stages").delete().in("id", deleteIds));
+  }
+
+  for (const stage of stages) {
+    const payload = stripGeneratedFields(stageToDb(stage, id));
+    delete payload.id;
+
+    if (isUuid(stage.id) && existingIds.has(stage.id)) {
+      await run(supabase.from("stages").update(payload).eq("id", stage.id).select().single());
+    } else {
+      console.log("STAGE INSERT PAYLOAD", payload);
+      await run(supabase.from("stages").insert(payload).select().single());
+    }
+  }
+
+  const savedStages = await run(
+    supabase.from("stages").select("*").eq("tournament_id", id).order("stage_order", { ascending: true })
+  );
+  return savedStages.map(stageFromDb);
 }
 
 export async function saveGroups(groups) {
