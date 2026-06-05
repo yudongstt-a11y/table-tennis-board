@@ -7,6 +7,7 @@ import {
 } from "../data/officialPlayers.js";
 import PlayerForm, { emptyPlayer } from "./PlayerForm.jsx";
 import { ratingLabel } from "./PlayerAutocomplete.jsx";
+import { buildDoublesPairEntries, pairDisplayName } from "../utils/grouping.js";
 
 function normalize(value) {
   return String(value).trim().toLowerCase();
@@ -47,12 +48,14 @@ function defaultBulkDraft(action) {
 
 export default function AdminPlayersManager({
   players,
+  doublesPairs = [],
   matches,
   language,
   dataSource,
   t,
   onPlayersChange,
   onOfficialDoublesImport,
+  onOfficialEntriesImport,
 }) {
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState("all");
@@ -65,6 +68,10 @@ export default function AdminPlayersManager({
   const [bulkNotice, setBulkNotice] = useState("");
 
   const selectedSet = useMemo(() => new Set(selectedPlayerIds), [selectedPlayerIds]);
+  const pairEntries = useMemo(
+    () => buildDoublesPairEntries(doublesPairs, players),
+    [doublesPairs, players]
+  );
 
   const visiblePlayers = useMemo(() => {
     const term = normalize(search);
@@ -185,7 +192,7 @@ export default function AdminPlayersManager({
     setSelectedPlayerIds((ids) => ids.filter((item) => item !== id));
   }
 
-  function importOfficialEntries() {
+  async function importOfficialEntries() {
     if (!window.confirm(t("confirmImportOfficialEntries"))) return;
 
     const officialByName = new Map(
@@ -202,16 +209,26 @@ export default function AdminPlayersManager({
       .filter((player) => !existingNames.has(normalize(player.name)))
       .map((player, index) => prepareOfficialPlayer(player, null, index));
 
-    onPlayersChange([...nextPlayers, ...additions]);
-    onOfficialDoublesImport?.([...nextPlayers, ...additions]);
-    setSelectedPlayerIds([]);
-    setBulkNotice(
-      t("officialImportComplete", {
-        players: officialPlayers.length,
-        doubles: officialDoublesPairs.length,
-        needs: playersNeedDoublesPartner.length,
-      })
-    );
+    const importedPlayers = [...nextPlayers, ...additions];
+
+    try {
+      if (onOfficialEntriesImport) {
+        await onOfficialEntriesImport(importedPlayers);
+      } else {
+        onPlayersChange(importedPlayers);
+        await onOfficialDoublesImport?.(importedPlayers);
+      }
+      setSelectedPlayerIds([]);
+      setBulkNotice(
+        t("officialImportComplete", {
+          players: officialPlayers.length,
+          doubles: officialDoublesPairs.length,
+          needs: playersNeedDoublesPartner.length,
+        })
+      );
+    } catch (error) {
+      setBulkNotice(error.message);
+    }
   }
 
   function matchCount(playerId, playerName) {
@@ -406,6 +423,40 @@ export default function AdminPlayersManager({
       </div>
 
       {bulkNotice && <div className="status-notice">{bulkNotice}</div>}
+
+      <section className="workflow-card">
+        <div className="section-title-row">
+          <div>
+            <p className="eyebrow">{t("mixedDoubles")}</p>
+            <h2>{t("doublesPairs")}</h2>
+            <p className="subtle">
+              {pairEntries.length > 0 ? `${pairEntries.length} ${t("doublesPairsCount")}` : t("noDoublesPairs")}
+            </p>
+          </div>
+        </div>
+        {pairEntries.length > 0 && (
+          <div className="admin-list compact-list">
+            {pairEntries.map((pair, index) => (
+              <article className="admin-row player-row" key={pair.id}>
+                <strong className="player-rank">#{index + 1}</strong>
+                <div className="admin-match-main">
+                  <span className="avatar-pill">D</span>
+                  <div>
+                    <strong>{pairDisplayName(pair)}</strong>
+                    <p>
+                      {t("rating")}: {pair.playerARating ?? t("unrated")} / {pair.playerBRating ?? t("unrated")}
+                    </p>
+                    <p>
+                      {t("averageRating")}: {pair.averageRating ?? t("unrated")} · {pair.status || "confirmed"}
+                    </p>
+                    {pair.notes && <p className="subtle">{pair.notes}</p>}
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
       <div className="admin-list">
         {visiblePlayers.map((player, index) => {

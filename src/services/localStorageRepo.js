@@ -93,4 +93,23 @@ export function subscribeToTournamentData() {
   return () => {};
 }
 
-export async function importOfficialDoublesPairsData() {}
+export async function importOfficialDoublesPairsData() {
+  const { officialDoublesPairs } = await import("../data/officialPlayers.js");
+  saveDoublesPairs(
+    officialDoublesPairs.map((pair, index) => ({
+      id: `pair_${index}_${pair.playerA.replace(/\s+/g, "_")}_${pair.playerB.replace(/\s+/g, "_")}`,
+      playerAName: pair.playerA,
+      playerBName: pair.playerB,
+      playerAId: "",
+      playerBId: "",
+      status: pair.status || "confirmed",
+      notes: pair.notes || "",
+    }))
+  );
+}
+
+export async function importOfficialEntriesData(players) {
+  savePlayers(players);
+  importOfficialDoublesPairsData();
+  return loadAllData();
+}

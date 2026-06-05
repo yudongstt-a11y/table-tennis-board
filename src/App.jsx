@@ -6,6 +6,7 @@ import { clearLocalCacheData } from "./utils/storage.js";
 import { defaultEventTimeline, defaultTournamentSettings } from "./data/demoTournament.js";
 import {
   DATA_SOURCE,
+  importOfficialEntriesData,
   importOfficialDoublesPairsData,
   loadAllData,
   saveBreaksData,
@@ -249,8 +250,20 @@ export default function App() {
     }
   }
 
+  function importOfficialEntries(playersForImport) {
+    return importOfficialEntriesData(playersForImport)
+      .then((nextData) => {
+        replaceAllData(nextData);
+        setDataSourceError("");
+      })
+      .catch((error) => {
+        setDataSourceError(error.message);
+        throw error;
+      });
+  }
+
   function importOfficialDoublesPairs(playersForImport) {
-    importOfficialDoublesPairsData(playersForImport)
+    return importOfficialDoublesPairsData(playersForImport)
       .then(() => loadAllData())
       .then((nextData) => replaceAllData(nextData))
       .catch((error) => setDataSourceError(error.message));
@@ -363,6 +376,7 @@ export default function App() {
         onTournamentStateChange={updateTournamentState}
         onReplaceAllData={replaceAllData}
         onOfficialDoublesImport={importOfficialDoublesPairs}
+        onOfficialEntriesImport={importOfficialEntries}
         onClearLocalCache={clearLocalCache}
         onLogout={handleLogout}
         onPublicView={() => navigate("/")}

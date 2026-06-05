@@ -71,6 +71,13 @@ async function replaceRows(table, rows, mapper, orderColumn = null) {
   return orderColumn ? data.sort((a, b) => (a[orderColumn] || 0) - (b[orderColumn] || 0)) : data;
 }
 
+function pairKey(pair) {
+  return [pair.player_a_name || pair.playerAName || pair.playerA, pair.player_b_name || pair.playerBName || pair.playerB]
+    .map((name) => String(name || "").trim().toLowerCase())
+    .sort()
+    .join("__");
+}
+
 export async function loadAllData() {
   const tournament = await ensureTournament();
   const id = tournament.id;
@@ -144,14 +151,26 @@ export async function savePlayers(players) {
 
 export async function importOfficialDoublesPairs(players) {
   const id = await tournamentId();
-  const playerByName = new Map(players.map((player) => [player.name.toLowerCase(), player]));
-  await run(
-    supabase
-      .from("doubles_pairs")
-      .upsert(officialDoublesPairs.map((pair) => doublesPairToDb(pair, id, playerByName)), {
-        onConflict: "tournament_id,player_a_name,player_b_name",
-      })
+  const dbPlayers = await run(supabase.from("players").select("*").eq("tournament_id", id));
+  const playerByName = new Map(dbPlayers.map((player) => [player.name.toLowerCase(), player]));
+  const existingPairs = await run(supabase.from("doubles_pairs").select("*").eq("tournament_id", id));
+  const existingByKey = new Map(existingPairs.map((pair) => [pairKey(pair), pair]));
+
+  await Promise.all(
+    officialDoublesPairs.map((pair) => {
+      const row = doublesPairToDb(pair, id, playerByName);
+      const existing = existingByKey.get(pairKey(row));
+      return existing
+        ? run(supabase.from("doubles_pairs").update(row).eq("id", existing.id))
+        : run(supabase.from("doubles_pairs").insert(row));
+    })
   );
+}
+
+export async function importOfficialEntries(players) {
+  await savePlayers(players);
+  await importOfficialDoublesPairs();
+  return loadAllData();
 }
 
 export async function saveDoublesPairs(pairs, players = []) {

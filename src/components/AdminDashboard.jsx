@@ -85,6 +85,7 @@ export default function AdminDashboard({
   onTournamentStateChange,
   onReplaceAllData,
   onOfficialDoublesImport,
+  onOfficialEntriesImport,
   onClearLocalCache,
   onLogout,
   onPublicView,
@@ -371,12 +372,14 @@ export default function AdminDashboard({
       ) : activeTab === "players" ? (
         <AdminPlayersManager
           players={players}
+          doublesPairs={doublesPairs}
           matches={matches}
           dataSource={dataSource}
           language={language}
           t={t}
           onPlayersChange={handlePlayersChange}
           onOfficialDoublesImport={onOfficialDoublesImport}
+          onOfficialEntriesImport={onOfficialEntriesImport}
         />
       ) : activeTab === "stages" ? (
         <AdminStagesManager
