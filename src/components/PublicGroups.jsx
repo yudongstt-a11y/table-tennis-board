@@ -21,6 +21,14 @@ function stageName(stage, language) {
   return language === "zh" ? stage.nameZh : stage.nameEn || stage.nameZh;
 }
 
+function getEventId(item) {
+  return item?.eventId || item?.event_id || item?.categoryId || "";
+}
+
+function getStageId(item) {
+  return item?.stageId || item?.stage_id || "";
+}
+
 function matchWinnerName(match) {
   if (!match.winnerSide) return "";
   return match.winnerSide === "A" ? match.playerAName : match.playerBName;
@@ -206,13 +214,13 @@ export default function PublicGroups({ groups, matches, players, doublesPairs = 
   const eventStages = useMemo(
     () =>
       stages
-        .filter((stage) => stage.eventId === activeEventId)
+        .filter((stage) => getEventId(stage) === activeEventId)
         .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0)),
     [activeEventId, stages]
   );
 
-  const eventGroups = publishedGroups.filter((group) => group.eventId === activeEventId);
-  const eventMatches = matches.filter((match) => match.eventId === activeEventId || match.categoryId === activeEventId);
+  const eventGroups = publishedGroups.filter((group) => getEventId(group) === activeEventId);
+  const eventMatches = matches.filter((match) => getEventId(match) === activeEventId);
   const hasAnyEventData = eventGroups.length > 0 || eventMatches.some((match) => match.stageFormat !== "round_robin");
 
   return (
@@ -234,10 +242,10 @@ export default function PublicGroups({ groups, matches, players, doublesPairs = 
 
       {eventStages.map((stage, index) => {
         const stageGroups = eventGroups
-          .filter((group) => group.stageId === stage.id)
+          .filter((group) => getStageId(group) === stage.id)
           .sort((a, b) => a.order - b.order);
         const stageMatches = eventMatches
-          .filter((match) => match.stageId === stage.id)
+          .filter((match) => getStageId(match) === stage.id)
           .sort(
             (a, b) =>
               (Number(a.bracketRound || a.roundNumber) || 0) -

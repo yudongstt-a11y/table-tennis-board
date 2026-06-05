@@ -68,6 +68,7 @@ export default function App() {
   const [groups, setGroups] = useState([]);
   const [doublesPairs, setDoublesPairs] = useState([]);
   const [dataSourceError, setDataSourceError] = useState("");
+  const [supabaseDiagnostics, setSupabaseDiagnostics] = useState(null);
   const [language, setLanguage] = useState(() => localStorage.getItem(LANGUAGE_KEY) || "zh");
   const [isLoggedIn, setIsLoggedIn] = useState(() => hasAdminSession());
 
@@ -84,18 +85,22 @@ export default function App() {
       .then((nextData) => {
         if (!active) return;
         replaceAllData(nextData);
-        setDataSourceError("");
         unsubscribe = subscribeToTournamentData(() => {
           loadAllData()
             .then((freshData) => {
               replaceAllData(freshData);
-              setDataSourceError("");
             })
-            .catch((error) => setDataSourceError(error.message));
+            .catch((error) => {
+              setDataSourceError(error.message);
+              setSupabaseDiagnostics(error.diagnostics || null);
+            });
         });
       })
       .catch((error) => {
-        if (active) setDataSourceError(error.message);
+        if (active) {
+          setDataSourceError(error.message);
+          setSupabaseDiagnostics(error.diagnostics || null);
+        }
       });
     return () => {
       active = false;
@@ -240,6 +245,7 @@ export default function App() {
     setGroups(nextData.groups);
     setDoublesPairs(nextData.doublesPairs || []);
     setDataSourceError(nextData.dataSourceError || "");
+    setSupabaseDiagnostics(nextData.supabaseDiagnostics || null);
   }
 
   function clearLocalCache() {
@@ -255,7 +261,6 @@ export default function App() {
     return importOfficialEntriesData(playersForImport)
       .then((nextData) => {
         replaceAllData(nextData);
-        setDataSourceError("");
       })
       .catch((error) => {
         setDataSourceError(error.message);
@@ -359,6 +364,7 @@ export default function App() {
         eventTimeline={eventTimeline}
         dataSource={DATA_SOURCE}
         dataSourceError={dataSourceError}
+        supabaseDiagnostics={supabaseDiagnostics}
         seedings={seedings}
         groups={groups}
         doublesPairs={doublesPairs}

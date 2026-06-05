@@ -154,8 +154,8 @@ export default function ScheduleBoard({
 
       {dataSourceError && (
         <section className="data-source-error-banner">
-          <strong>{t("supabaseConfigMissing")}</strong>
-          <span>{t("supabaseEnvHelp")}</span>
+          <strong>{t("supabaseQueryError")}</strong>
+          <span>{dataSourceError}</span>
         </section>
       )}
 

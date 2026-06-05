@@ -1,4 +1,4 @@
-import { supabase, supabaseConfigError } from "../lib/supabaseClient.js";
+import { getSupabaseConfigStatus, supabase, supabaseConfigError } from "../lib/supabaseClient.js";
 import { DEFAULT_TOURNAMENT_SLUG } from "../config/dataSource.js";
 import { defaultTournamentSettings } from "../data/demoTournament.js";
 import {
@@ -39,6 +39,33 @@ async function run(query) {
   return data;
 }
 
+function makeDiagnostics() {
+  return {
+    config: getSupabaseConfigStatus(),
+    tables: {},
+  };
+}
+
+async function loadTable(diagnostics, name, query) {
+  try {
+    const data = await run(query);
+    diagnostics.tables[name] = {
+      loaded: true,
+      count: Array.isArray(data) ? data.length : data ? 1 : 0,
+      error: "",
+    };
+    return data || [];
+  } catch (error) {
+    diagnostics.tables[name] = {
+      loaded: false,
+      count: 0,
+      error: error.message || String(error),
+    };
+    console.error(`[Supabase:${name}]`, error);
+    return [];
+  }
+}
+
 export async function ensureTournament(slug = DEFAULT_TOURNAMENT_SLUG) {
   const client = ensureClient();
   const existing = await run(client.from("tournaments").select("*").eq("slug", slug).maybeSingle());
@@ -71,6 +98,41 @@ async function replaceRows(table, rows, mapper, orderColumn = null) {
   return orderColumn ? data.sort((a, b) => (a[orderColumn] || 0) - (b[orderColumn] || 0)) : data;
 }
 
+async function safeReplaceRows(table, rows, mapper, orderColumn = null, fallbackColumns = []) {
+  const id = await tournamentId();
+  const existing = await run(supabase.from(table).select("id").eq("tournament_id", id));
+  const mappedRows = rows.map((row) => mapper(row, id));
+  const retainedIds = new Set(mappedRows.map((row) => row.id).filter(Boolean));
+  let data = [];
+  let fallbackError = null;
+
+  if (mappedRows.length) {
+    try {
+      data = await run(supabase.from(table).upsert(mappedRows).select());
+    } catch (error) {
+      const message = error.message || "";
+      const canFallback = fallbackColumns.some((column) => message.includes(column));
+      if (!canFallback) throw error;
+      fallbackError = error;
+      const fallbackRows = mappedRows.map((row) => {
+        const next = { ...row };
+        fallbackColumns.forEach((column) => delete next[column]);
+        return next;
+      });
+      data = await run(supabase.from(table).upsert(fallbackRows).select());
+    }
+  }
+
+  const deleteIds = existing.map((row) => row.id).filter((idValue) => !retainedIds.has(idValue));
+  if (deleteIds.length) await run(supabase.from(table).delete().in("id", deleteIds));
+
+  if (fallbackError) {
+    throw new Error(`${table}: ${fallbackError.message}. Please run the latest Supabase schema migration.`);
+  }
+
+  return orderColumn ? data.sort((a, b) => (a[orderColumn] || 0) - (b[orderColumn] || 0)) : data;
+}
+
 function pairKey(pair) {
   return [pair.player_a_name || pair.playerAName || pair.playerA, pair.player_b_name || pair.playerBName || pair.playerB]
     .map((name) => String(name || "").trim().toLowerCase())
@@ -79,19 +141,33 @@ function pairKey(pair) {
 }
 
 export async function loadAllData() {
-  const tournament = await ensureTournament();
+  const diagnostics = makeDiagnostics();
+  let tournament = null;
+
+  try {
+    tournament = await ensureTournament();
+    diagnostics.tables.tournaments = { loaded: true, count: tournament ? 1 : 0, error: "" };
+  } catch (error) {
+    diagnostics.tables.tournaments = {
+      loaded: false,
+      count: 0,
+      error: error.message || String(error),
+    };
+    throw Object.assign(error, { diagnostics });
+  }
+
   const id = tournament.id;
 
   const [players, doublesPairs, stages, groups, matches, tableControls, timeline, breaks, seedings] = await Promise.all([
-    run(supabase.from("players").select("*").eq("tournament_id", id).order("name")),
-    run(supabase.from("doubles_pairs").select("*").eq("tournament_id", id).order("player_a_name")),
-    run(supabase.from("stages").select("*").eq("tournament_id", id).order("stage_order")),
-    run(supabase.from("groups").select("*").eq("tournament_id", id).order("group_order")),
-    run(supabase.from("matches").select("*").eq("tournament_id", id).order("scheduled_time")),
-    run(supabase.from("table_controls").select("*").eq("tournament_id", id)),
-    run(supabase.from("event_timeline_items").select("*").eq("tournament_id", id).order("item_order")),
-    run(supabase.from("breaks").select("*").eq("tournament_id", id)),
-    run(supabase.from("seedings").select("*").eq("tournament_id", id)),
+    loadTable(diagnostics, "players", supabase.from("players").select("*").eq("tournament_id", id).order("name")),
+    loadTable(diagnostics, "doubles_pairs", supabase.from("doubles_pairs").select("*").eq("tournament_id", id).order("player_a_name")),
+    loadTable(diagnostics, "stages", supabase.from("stages").select("*").eq("tournament_id", id).order("stage_order")),
+    loadTable(diagnostics, "groups", supabase.from("groups").select("*").eq("tournament_id", id).order("event_id").order("group_order")),
+    loadTable(diagnostics, "matches", supabase.from("matches").select("*").eq("tournament_id", id).order("scheduled_time")),
+    loadTable(diagnostics, "table_controls", supabase.from("table_controls").select("*").eq("tournament_id", id)),
+    loadTable(diagnostics, "event_timeline_items", supabase.from("event_timeline_items").select("*").eq("tournament_id", id).order("item_order")),
+    loadTable(diagnostics, "breaks", supabase.from("breaks").select("*").eq("tournament_id", id)),
+    loadTable(diagnostics, "seedings", supabase.from("seedings").select("*").eq("tournament_id", id)),
   ]);
 
   const mappedStages = stages.map(stageFromDb);
@@ -114,7 +190,11 @@ export async function loadAllData() {
     eventTimeline: mappedTimeline,
     seedings: seedings.map(seedingFromDb),
     groups: groups.map(groupFromDb),
-    dataSourceError: "",
+    dataSourceError: Object.entries(diagnostics.tables)
+      .filter(([, info]) => info.error)
+      .map(([table, info]) => `${table}: ${info.error}`)
+      .join("; "),
+    supabaseDiagnostics: diagnostics,
   };
 }
 
@@ -182,11 +262,11 @@ export async function saveDoublesPairs(pairs, players = []) {
 }
 
 export async function saveStages(stages) {
-  await replaceRows("stages", stages, stageToDb, "stage_order");
+  await safeReplaceRows("stages", stages, stageToDb, "stage_order", ["next_stage_config"]);
 }
 
 export async function saveGroups(groups) {
-  await replaceRows("groups", groups, groupToDb, "group_order");
+  await safeReplaceRows("groups", groups, groupToDb, "group_order", ["entry_type", "entry_ids"]);
 }
 
 export async function saveSeedings(seedings) {

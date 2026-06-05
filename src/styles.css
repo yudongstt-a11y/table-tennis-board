@@ -1282,6 +1282,47 @@ h2 {
   color: #33527f;
 }
 
+.diagnostics-panel {
+  margin-top: 16px;
+}
+
+.diagnostics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.diagnostics-grid div {
+  display: grid;
+  gap: 4px;
+  min-height: 70px;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.diagnostics-grid strong {
+  color: #334155;
+  font-size: 13px;
+}
+
+.diagnostics-grid span {
+  color: #0f172a;
+  font-weight: 900;
+}
+
+.diagnostics-grid small {
+  color: #b91c1c;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.diagnostics-grid .diagnostic-error {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
 .group-player-row {
   display: grid;
   grid-template-columns: minmax(180px, 1fr) minmax(150px, auto) auto;

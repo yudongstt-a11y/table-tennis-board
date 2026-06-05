@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 function buildTableNames(count, currentNames = []) {
   const tableCount = Math.max(1, Number(count) || 1);
@@ -20,6 +20,7 @@ export default function TournamentSetup({
   eventTimeline,
   dataSource,
   dataSourceError,
+  supabaseDiagnostics,
   language,
   t,
   onSettingsChange,
@@ -28,6 +29,10 @@ export default function TournamentSetup({
   const [draft, setDraft] = useState(settings);
   const [timelineDraft, setTimelineDraft] = useState(null);
   const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    setDraft(settings);
+  }, [settings]);
 
   function updateSetting(field, value) {
     if (field === "tableCount") {
@@ -103,7 +108,12 @@ export default function TournamentSetup({
             <p className={dataSource === "localStorage" || dataSourceError ? "data-source-warning" : "subtle"}>
               {dataSource === "supabase" ? t("supabaseLiveDatabase") : t("localStorageDataSource")}
             </p>
-            {dataSourceError && <p className="data-source-warning">{t("supabaseConfigMissing")}</p>}
+            {dataSource === "supabase" &&
+              supabaseDiagnostics &&
+              (!supabaseDiagnostics.config?.urlConfigured || !supabaseDiagnostics.config?.anonKeyConfigured) && (
+                <p className="data-source-warning">{t("supabaseConfigMissing")}</p>
+              )}
+            {dataSourceError && <p className="data-source-warning">{dataSourceError}</p>}
             {dataSource === "localStorage" && <p className="data-source-warning">{t("localStorageWarning")}</p>}
           </div>
           <button className="primary-button" type="submit">
@@ -158,6 +168,44 @@ export default function TournamentSetup({
       </form>
 
       {notice && <div className="status-notice">{notice}</div>}
+
+      {dataSource === "supabase" && (
+        <section className="workflow-card diagnostics-panel">
+          <div>
+            <p className="eyebrow">{t("supabaseDiagnostics")}</p>
+            <h2>{t("supabaseDiagnostics")}</h2>
+          </div>
+          <div className="diagnostics-grid">
+            <div>
+              <strong>Supabase URL</strong>
+              <span>{supabaseDiagnostics?.config?.urlConfigured ? t("configured") : t("missing")}</span>
+            </div>
+            <div>
+              <strong>Supabase anon key</strong>
+              <span>{supabaseDiagnostics?.config?.anonKeyConfigured ? t("configured") : t("missing")}</span>
+            </div>
+            {[
+              "tournaments",
+              "players",
+              "stages",
+              "groups",
+              "matches",
+              "event_timeline_items",
+              "table_controls",
+              "breaks",
+            ].map((table) => {
+              const info = supabaseDiagnostics?.tables?.[table];
+              return (
+                <div className={info?.error ? "diagnostic-error" : ""} key={table}>
+                  <strong>{table} loaded</strong>
+                  <span>{info ? info.count : 0}</span>
+                  {info?.error && <small>{info.error}</small>}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <section className="workflow-card timeline-admin-panel">
         <div className="section-title-row">

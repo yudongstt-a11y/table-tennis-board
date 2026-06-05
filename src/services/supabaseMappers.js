@@ -24,6 +24,7 @@ function withUuidId(object) {
 export function tournamentFromDb(row) {
   return {
     id: row.id,
+    tournamentId: row.tournament_id,
     slug: row.slug,
     nameZh: row.name_zh,
     nameEn: row.name_en || "",
@@ -66,6 +67,7 @@ export function tournamentToDb(settings, control = {}, slug = "yulan-cup-2026") 
 export function playerFromDb(row) {
   return {
     id: row.id,
+    tournamentId: row.tournament_id,
     name: row.name,
     gender: row.gender || "Other",
     rating: row.rating ?? null,
@@ -95,13 +97,16 @@ export function playerToDb(player, tournamentId) {
 export function stageFromDb(row) {
   return {
     id: row.id,
+    tournamentId: row.tournament_id,
     eventId: row.event_id,
     nameZh: row.name_zh,
     nameEn: row.name_en || "",
     format: row.format,
     matchFormat: row.match_format,
     winnerGames: row.winner_games,
+    defaultMinutes: row.default_minutes,
     defaultMatchMinutes: row.default_minutes,
+    stageOrder: row.stage_order || 1,
     order: row.stage_order || 1,
     tableAllocation: row.table_allocation || 1,
     division: row.division || null,
@@ -130,9 +135,11 @@ export function groupFromDb(row) {
   const entryIds = Array.isArray(row.entry_ids) ? row.entry_ids : row.player_ids || [];
   return {
     id: row.id,
+    tournamentId: row.tournament_id,
     eventId: row.event_id,
     stageId: row.stage_id,
     name: row.name,
+    groupOrder: row.group_order || 1,
     order: row.group_order || 1,
     playerIds: Array.isArray(row.player_ids) ? row.player_ids : [],
     entryType: row.entry_type || "player",

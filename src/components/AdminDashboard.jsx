@@ -57,6 +57,7 @@ export default function AdminDashboard({
   eventTimeline,
   dataSource,
   dataSourceError,
+  supabaseDiagnostics,
   seedings,
   groups,
   doublesPairs,
@@ -378,6 +379,7 @@ export default function AdminDashboard({
           eventTimeline={eventTimeline}
           dataSource={dataSource}
           dataSourceError={dataSourceError}
+          supabaseDiagnostics={supabaseDiagnostics}
           language={language}
           t={t}
           onSettingsChange={onTournamentSettingsChange}
