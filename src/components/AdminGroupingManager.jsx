@@ -4,15 +4,19 @@ import { getStageFormatLabel } from "../constants/matchFormats.js";
 import {
   averageRating,
   averageEntryRating,
-  buildDoublesPairEntries,
   calculateGroupCount,
   createGroupMatches,
   generateFairEntryGroups,
   generateFairGroups,
   groupEntryIds,
-  pairDisplayName,
   sortPlayersForSeeding,
 } from "../utils/grouping.js";
+import {
+  buildDoublesEntriesFromPlayers,
+  doublesEntryDisplayName,
+  doublesEntryRatingLine,
+  doublesEntrySummary,
+} from "../utils/doublesEntries.js";
 import { ratingLabel } from "./PlayerAutocomplete.jsx";
 
 function seedingId(eventId, stageId) {
@@ -29,7 +33,6 @@ export default function AdminGroupingManager({
   seedings,
   groups,
   matches,
-  doublesPairs,
   tournamentSettings,
   language,
   t,
@@ -56,10 +59,8 @@ export default function AdminGroupingManager({
     [eventId, players]
   );
   const isDoublesEvent = eventId === "mixed_doubles";
-  const pairEntries = useMemo(
-    () => buildDoublesPairEntries(doublesPairs || [], players),
-    [doublesPairs, players]
-  );
+  const pairEntries = useMemo(() => buildDoublesEntriesFromPlayers(players), [players]);
+  const pairSummary = useMemo(() => doublesEntrySummary(pairEntries), [pairEntries]);
   const eventEntries = isDoublesEvent ? pairEntries : eventPlayers;
 
   const eventStages = useMemo(
@@ -358,7 +359,7 @@ export default function AdminGroupingManager({
   const assignedIds = new Set(draftGroups.flatMap((group) => groupEntryIds(group)));
   const unassignedPlayers = seededPlayers.filter((player) => !assignedIds.has(player.id));
   const entryCountLabel = isDoublesEvent
-    ? `${pairEntries.length} ${t("doublesPairsCount")}`
+    ? `${pairEntries.length} ${t("doublesEntries")}`
     : `${eventPlayers.length} ${t("players")}`;
 
   return (
@@ -380,6 +381,11 @@ export default function AdminGroupingManager({
             ))}
           </div>
           <p className="subtle">{entryCountLabel}</p>
+          {isDoublesEvent && (
+            <p className="subtle">
+              {pairSummary.confirmed} {t("confirmedPairs")}, {pairSummary.needsPartner} {t("playersNeedPartners")}
+            </p>
+          )}
         </section>
 
         <section className="workflow-card">
@@ -407,7 +413,7 @@ export default function AdminGroupingManager({
             <p className="eyebrow">Step 3</p>
             <h2>{isDoublesEvent ? t("pairSeedingOrder") : t("seedingOrder")}</h2>
             <p className="subtle">
-              {isDoublesEvent ? t("confirmedDoublesOnly") : t("seedingOrderHelp")}
+              {isDoublesEvent ? t("doublesSeedingHelp") : t("seedingOrderHelp")}
             </p>
           </div>
           <div className="row-actions">
@@ -428,16 +434,11 @@ export default function AdminGroupingManager({
             <article className="seed-row" key={entry.id}>
               <strong className="seed-rank">#{index + 1}</strong>
               <div className="seed-player-main">
-                <b>{isDoublesEvent ? pairDisplayName(entry) : entry.name}</b>
+                <b>{isDoublesEvent ? doublesEntryDisplayName(entry, language) : entry.name}</b>
                 {isDoublesEvent ? (
                   <>
-                    <p>
-                      {t("rating")}: {entry.playerARating ?? t("unrated")} /{" "}
-                      {entry.playerBRating ?? t("unrated")}
-                    </p>
-                    <p>
-                      {t("averageRating")}: {entry.averageRating ?? t("unrated")}
-                    </p>
+                    <p>{doublesEntryRatingLine(entry, t)}</p>
+                    {entry.notes && <p className="subtle">{entry.notes}</p>}
                   </>
                 ) : (
                   <>
@@ -536,7 +537,7 @@ export default function AdminGroupingManager({
                   <h3>{group.name}</h3>
                   <span>
                     {groupEntryIds(group).length}{" "}
-                    {group.entryType === "pair" ? t("doublesPairsCount") : t("players")}
+                    {group.entryType === "pair" ? t("doublesEntries") : t("players")}
                   </span>
                 </div>
                 <p className="subtle">
@@ -555,7 +556,7 @@ export default function AdminGroupingManager({
                         <span>
                           {index + 1}.{" "}
                           {group.entryType === "pair"
-                            ? `${pairDisplayName(player)} · ${t("averageRating")} ${player.averageRating ?? t("unrated")}`
+                            ? `${doublesEntryDisplayName(player, language)} · ${t("totalRating")} ${player.totalRating ?? t("unrated")}`
                             : `${player.name} · ${ratingLabel(player.rating, t)}`}
                         </span>
                         <select value={group.id} onChange={(event) => movePlayerToGroup(playerId, event.target.value)}>
@@ -583,7 +584,7 @@ export default function AdminGroupingManager({
                 <div className="group-player-row" key={player.id}>
                   <span>
                     {isDoublesEvent
-                      ? `${pairDisplayName(player)} · ${t("averageRating")} ${player.averageRating ?? t("unrated")}`
+                      ? `${doublesEntryDisplayName(player, language)} · ${t("totalRating")} ${player.totalRating ?? t("unrated")}`
                       : `${player.name} · ${ratingLabel(player.rating, t)}`}
                   </span>
                   <select defaultValue="" onChange={(event) => movePlayerToGroup(player.id, event.target.value)}>

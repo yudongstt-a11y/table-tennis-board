@@ -7,7 +7,10 @@ import {
 } from "../data/officialPlayers.js";
 import PlayerForm, { emptyPlayer } from "./PlayerForm.jsx";
 import { ratingLabel } from "./PlayerAutocomplete.jsx";
-import { buildDoublesPairEntries, pairDisplayName } from "../utils/grouping.js";
+import {
+  buildDoublesEntriesFromPlayers,
+  doublesEntryDisplayName,
+} from "../utils/doublesEntries.js";
 
 function normalize(value) {
   return String(value).trim().toLowerCase();
@@ -69,8 +72,8 @@ export default function AdminPlayersManager({
 
   const selectedSet = useMemo(() => new Set(selectedPlayerIds), [selectedPlayerIds]);
   const pairEntries = useMemo(
-    () => buildDoublesPairEntries(doublesPairs, players),
-    [doublesPairs, players]
+    () => buildDoublesEntriesFromPlayers(players),
+    [players]
   );
 
   const visiblePlayers = useMemo(() => {
@@ -442,12 +445,12 @@ export default function AdminPlayersManager({
                 <div className="admin-match-main">
                   <span className="avatar-pill">D</span>
                   <div>
-                    <strong>{pairDisplayName(pair)}</strong>
+                    <strong>{doublesEntryDisplayName(pair, language)}</strong>
                     <p>
                       {t("rating")}: {pair.playerARating ?? t("unrated")} / {pair.playerBRating ?? t("unrated")}
                     </p>
                     <p>
-                      {t("averageRating")}: {pair.averageRating ?? t("unrated")} · {pair.status || "confirmed"}
+                      {t("totalRating")}: {pair.totalRating ?? t("unrated")} · {pair.entryType}
                     </p>
                     {pair.notes && <p className="subtle">{pair.notes}</p>}
                   </div>

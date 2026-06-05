@@ -148,12 +148,16 @@ export function createGroupMatches({ groups, playersById, entriesById = playersB
           tableOrder: 1000 + group.order * 100 + roundIndex * 10 + matchIndex,
           playerAId: isPairs ? "" : playerA.id,
           playerAName: isPairs ? pairDisplayName(playerA) : playerA.name,
-          playerARating: isPairs ? playerA.averageRating : playerA.rating,
-          playerAMembers: isPairs ? [playerA.playerAName, playerA.playerBName].filter(Boolean) : [playerA.name],
+          playerARating: isPairs ? playerA.totalRating ?? playerA.averageRating : playerA.rating,
+          playerAMembers: isPairs
+            ? [playerA.playerAName, playerA.playerBName].filter(Boolean)
+            : [playerA.name],
           playerBId: isPairs ? "" : playerB.id,
           playerBName: isPairs ? pairDisplayName(playerB) : playerB.name,
-          playerBRating: isPairs ? playerB.averageRating : playerB.rating,
-          playerBMembers: isPairs ? [playerB.playerAName, playerB.playerBName].filter(Boolean) : [playerB.name],
+          playerBRating: isPairs ? playerB.totalRating ?? playerB.averageRating : playerB.rating,
+          playerBMembers: isPairs
+            ? [playerB.playerAName, playerB.playerBName].filter(Boolean)
+            : [playerB.name],
           isBye: false,
           status: "Upcoming",
           score: "",

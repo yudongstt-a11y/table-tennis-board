@@ -1,7 +1,11 @@
 import { useMemo, useState } from "react";
 import { getCategoryLabel } from "../constants/categories.js";
 import { getStageFormatLabel } from "../constants/matchFormats.js";
-import { buildDoublesPairEntries, groupEntryIds, pairDisplayName } from "../utils/grouping.js";
+import { groupEntryIds } from "../utils/grouping.js";
+import {
+  buildDoublesEntriesFromPlayers,
+  doublesEntryDisplayName,
+} from "../utils/doublesEntries.js";
 import { ratingLabel } from "./PlayerAutocomplete.jsx";
 
 const eventTabs = [
@@ -51,8 +55,8 @@ function GroupCards({ groups, playerMap, pairMap, language, t }) {
               {entryIds.map((entryId, index) => {
                 const entry = isPairGroup ? pairMap.get(entryId) : playerMap.get(entryId);
                 const line = isPairGroup
-                  ? `${entry ? pairDisplayName(entry) : entryId} · ${t("averageRating")} ${
-                      entry?.averageRating ?? t("unrated")
+                  ? `${entry ? doublesEntryDisplayName(entry, language) : entryId} · ${t("totalRating")} ${
+                      entry?.totalRating ?? t("unrated")
                     }`
                   : `${entry?.name || entryId} · ${entry ? ratingLabel(entry.rating, t) : t("unrated")}`;
 
@@ -123,7 +127,7 @@ function BracketRounds({ matches, t }) {
 export default function PublicGroups({ groups, matches, players, doublesPairs = [], stages, language, t }) {
   const [activeEventId, setActiveEventId] = useState("singles");
   const playerMap = useMemo(() => new Map(players.map((player) => [player.id, player])), [players]);
-  const pairEntries = useMemo(() => buildDoublesPairEntries(doublesPairs, players), [doublesPairs, players]);
+  const pairEntries = useMemo(() => buildDoublesEntriesFromPlayers(players), [players]);
   const pairMap = useMemo(() => new Map(pairEntries.map((pair) => [pair.id, pair])), [pairEntries]);
   const publishedGroups = groups.filter((group) => group.published);
 

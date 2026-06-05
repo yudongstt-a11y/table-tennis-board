@@ -1,6 +1,6 @@
 import { CATEGORIES } from "../constants/categories.js";
 import { getMatchFormat, getMatchFormatLabel, getStageFormatLabel } from "../constants/matchFormats.js";
-import { buildDoublesPairEntries, pairDisplayName } from "../utils/grouping.js";
+import { buildDoublesEntriesFromPlayers, doublesEntryDisplayName } from "../utils/doublesEntries.js";
 import PlayerAutocomplete from "./PlayerAutocomplete.jsx";
 
 export const emptyMatch = {
@@ -38,10 +38,10 @@ export const emptyMatch = {
 
 export default function MatchForm({ value, players, doublesPairs = [], stages = [], tableNames = [], language, t, title, onChange, onCancel, onSubmit }) {
   const isDoubles = value.categoryId === "mixed_doubles";
-  const pairOptions = buildDoublesPairEntries(doublesPairs, players).map((pair) => ({
+  const pairOptions = buildDoublesEntriesFromPlayers(players).map((pair) => ({
     id: pair.id,
-    name: pairDisplayName(pair),
-    rating: pair.averageRating,
+    name: doublesEntryDisplayName(pair, language),
+    rating: pair.totalRating,
     categories: ["mixed_doubles"],
     playerAMembers: [pair.playerAName, pair.playerBName].filter(Boolean),
     pair,
