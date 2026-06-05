@@ -12,15 +12,13 @@ export function normalizePlayer(row) {
     doublesPartner: row.doublesPartner || row.doubles_partner || "",
     needsDoublesPartner: Boolean(row.needsDoublesPartner ?? row.needs_doubles_partner),
     notes: row.notes || "",
-    starRating: row.starRating ?? row.star_rating ?? null,
-    starPoints: row.starPoints ?? row.star_points ?? null,
     createdAt: row.createdAt || row.created_at,
     updatedAt: row.updatedAt || row.updated_at,
   };
 }
 
 export function toPlayerRow(player, tournamentId) {
-  const row = {
+  return {
     tournament_id: tournamentId || player.tournamentId,
     name: player.name,
     gender: player.gender || "Other",
@@ -31,11 +29,6 @@ export function toPlayerRow(player, tournamentId) {
     needs_doubles_partner: Boolean(player.needsDoublesPartner),
     notes: player.notes || null,
   };
-
-  if (player.starRating !== undefined) row.star_rating = player.starRating;
-  if (player.starPoints !== undefined) row.star_points = player.starPoints;
-
-  return row;
 }
 
 export async function getPlayers() {

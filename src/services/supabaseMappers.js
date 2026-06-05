@@ -76,15 +76,13 @@ export function playerFromDb(row) {
     doublesPartner: row.doubles_partner || "",
     needsDoublesPartner: Boolean(row.needs_doubles_partner),
     notes: row.notes || "",
-    starRating: row.star_rating ?? null,
-    starPoints: row.star_points ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
 export function playerToDb(player, tournamentId) {
-  const row = {
+  return {
     ...withUuidId(player),
     tournament_id: tournamentId,
     name: player.name,
@@ -96,11 +94,6 @@ export function playerToDb(player, tournamentId) {
     needs_doubles_partner: Boolean(player.needsDoublesPartner),
     notes: player.notes || null,
   };
-
-  if (player.starRating !== undefined) row.star_rating = player.starRating;
-  if (player.starPoints !== undefined) row.star_points = player.starPoints;
-
-  return row;
 }
 
 export function stageFromDb(row) {
