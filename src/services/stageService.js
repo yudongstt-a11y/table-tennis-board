@@ -1,5 +1,20 @@
 import { loadAllData, saveStagesData } from "./dataRepository.js";
 
+function stripGeneratedFields(payload) {
+  const copy = { ...payload };
+  delete copy.id;
+  delete copy.created_at;
+  delete copy.updated_at;
+  delete copy.createdAt;
+  delete copy.updatedAt;
+
+  Object.keys(copy).forEach((key) => {
+    if (copy[key] === undefined) delete copy[key];
+  });
+
+  return copy;
+}
+
 export function normalizeStage(row) {
   return {
     id: row.id,
@@ -22,7 +37,7 @@ export function normalizeStage(row) {
 }
 
 export function toStageRow(stage, tournamentId) {
-  const payload = {
+  return stripGeneratedFields({
     tournament_id: tournamentId,
     event_id: stage.eventId,
     name_zh: stage.nameZh,
@@ -34,10 +49,7 @@ export function toStageRow(stage, tournamentId) {
     stage_order: stage.stageOrder || stage.order,
     table_allocation: stage.tableAllocation,
     next_stage_config: stage.nextStageConfig || {},
-  };
-
-  Object.keys(payload).forEach((key) => payload[key] === undefined && delete payload[key]);
-  return payload;
+  });
 }
 
 export async function getStages() {

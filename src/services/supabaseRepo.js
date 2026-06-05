@@ -42,9 +42,14 @@ async function run(query) {
 
 function stripGeneratedFields(payload) {
   const copy = { ...payload };
-  if (!copy.id) delete copy.id;
+  if (!isUuid(copy.id)) delete copy.id;
   delete copy.created_at;
   delete copy.updated_at;
+  delete copy.createdAt;
+  delete copy.updatedAt;
+  Object.keys(copy).forEach((key) => {
+    if (copy[key] === undefined) delete copy[key];
+  });
   return copy;
 }
 
