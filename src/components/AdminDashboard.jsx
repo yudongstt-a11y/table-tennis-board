@@ -419,6 +419,7 @@ export default function AdminDashboard({
           onStagesChange={onStagesChange}
           onDoublesPairsChange={onDoublesPairsChange}
           onMatchesChange={onMatchesChange}
+          onGoToStages={() => setActiveTab("stages")}
         />
       ) : activeTab === "control" ? (
         <TournamentControl

@@ -43,6 +43,14 @@ function stageHint(stage, t) {
   return "";
 }
 
+function getStageEventId(stage) {
+  return stage?.eventId || stage?.event_id || "";
+}
+
+function getStageFormat(stage) {
+  return stage?.format || stage?.stage_format || "";
+}
+
 export default function AdminGroupingManager({
   players,
   stages,
@@ -56,6 +64,7 @@ export default function AdminGroupingManager({
   onGroupsChange,
   onStagesChange,
   onMatchesChange,
+  onGoToStages,
 }) {
   const [eventId, setEventId] = useState("singles");
   const [stageId, setStageId] = useState("");
@@ -84,7 +93,7 @@ export default function AdminGroupingManager({
   const eventEntries = isDoublesEvent ? pairEntries : eventPlayers;
 
   const eventStages = useMemo(
-    () => stages.filter((stage) => stage.eventId === eventId),
+    () => stages.filter((stage) => getStageEventId(stage) === eventId),
     [eventId, stages]
   );
 
@@ -103,8 +112,9 @@ export default function AdminGroupingManager({
   }, [eventStages, stageId]);
 
   useEffect(() => {
-    if (!selectedStage) return;
-    const stored = seedings.find((item) => item.id === seedingId(eventId, selectedStage.id));
+    const stored = selectedStage
+      ? seedings.find((item) => item.id === seedingId(eventId, selectedStage.id))
+      : null;
     const defaultIds = isDoublesEvent
       ? pairEntries.map((pair) => pair.id)
       : sortPlayersForSeeding(eventPlayers).map((player) => player.id);
@@ -112,12 +122,16 @@ export default function AdminGroupingManager({
       stored?.playerIds?.filter((id) => eventEntries.some((entry) => entry.id === id)) || [];
     const missingIds = defaultIds.filter((id) => !validIds.includes(id));
     setSeedPlayerIds([...validIds, ...missingIds]);
-    setDraftGroups(currentGroups.map((group) => ({
-      ...group,
-      entryType: group.entryType || (isDoublesEvent ? "pair" : "player"),
-      entryIds: [...groupEntryIds(group)],
-      playerIds: [...(group.playerIds || [])],
-    })));
+    setDraftGroups(
+      selectedStage
+        ? currentGroups.map((group) => ({
+            ...group,
+            entryType: group.entryType || (isDoublesEvent ? "pair" : "player"),
+            entryIds: [...groupEntryIds(group)],
+            playerIds: [...(group.playerIds || [])],
+          }))
+        : []
+    );
   }, [eventId, eventPlayers, eventEntries, isDoublesEvent, pairEntries, selectedStage?.id]);
 
   useEffect(() => {
@@ -591,13 +605,22 @@ export default function AdminGroupingManager({
         <section className="workflow-card">
           <p className="eyebrow">Step 2</p>
           <h2>{t("selectStage")}</h2>
-          <select value={selectedStage?.id || ""} onChange={(event) => setStageId(event.target.value)}>
-            {eventStages.map((stage) => (
-              <option key={stage.id} value={stage.id}>
-                {language === "zh" ? stage.nameZh : stage.nameEn}
-              </option>
-            ))}
-          </select>
+          {eventStages.length ? (
+            <select value={selectedStage?.id || ""} onChange={(event) => setStageId(event.target.value)}>
+              {eventStages.map((stage) => (
+                <option key={stage.id} value={stage.id}>
+                  {language === "zh" ? stage.nameZh : stage.nameEn}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div className="empty-state compact-empty">
+              <p>{isDoublesEvent ? t("noDoublesStages") : t("noStageData")}</p>
+              <button className="ghost-button" type="button" onClick={onGoToStages}>
+                {t("goToStages")}
+              </button>
+            </div>
+          )}
           {selectedStage && (
             <p className="subtle">
               {getStageFormatLabel(selectedStage.format, language)}
@@ -624,7 +647,7 @@ export default function AdminGroupingManager({
             <button className="ghost-button" type="button" onClick={autoSortSeeds}>
               {t("resetOrder")}
             </button>
-            <button className="primary-button" type="button" onClick={saveSeeding}>
+            <button className="primary-button" type="button" onClick={saveSeeding} disabled={!selectedStage}>
               {t("saveSeedingOrder")}
             </button>
             {selectedStage?.format === "knockout" && (
@@ -685,7 +708,16 @@ export default function AdminGroupingManager({
         </div>
       </section>
 
-      {selectedStage?.format === "round_robin" ? (
+      {!selectedStage ? (
+        <section className="workflow-card">
+          <p className="eyebrow">Step 4</p>
+          <h2>{t("groupingSettings")}</h2>
+          <p className="subtle">{isDoublesEvent ? t("noDoublesStages") : t("noStageData")}</p>
+          <button className="ghost-button" type="button" onClick={onGoToStages}>
+            {t("goToStages")}
+          </button>
+        </section>
+      ) : selectedStage?.format === "round_robin" ? (
         <section className="workflow-card">
           <p className="eyebrow">Step 4</p>
           <h2>{t("groupingSettings")}</h2>
