@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { CATEGORIES, getCategoryLabel } from "../constants/categories.js";
 import { getStageFormatLabel } from "../constants/matchFormats.js";
 import {
@@ -228,7 +228,7 @@ export default function AdminGroupingManager({
           {selectedStage && (
             <p className="subtle">
               {getStageFormatLabel(selectedStage.format, language)}
-              {selectedStage.format !== "round_robin" ? ` · ${t("roundRobinGroupingHint")}` : ""}
+              {selectedStage.format !== "round_robin" ? ` 路 ${t("roundRobinGroupingHint")}` : ""}
             </p>
           )}
         </section>
@@ -239,7 +239,7 @@ export default function AdminGroupingManager({
           <div>
             <p className="eyebrow">Step 3</p>
             <h2>{t("seedingOrder")}</h2>
-            <p className="subtle">{t("unratedAtEnd")}</p>
+            <p className="subtle">{t("seedingOrderHelp")}</p>
           </div>
           <div className="row-actions">
             <button className="ghost-button" type="button" onClick={autoSortSeeds}>
@@ -257,23 +257,32 @@ export default function AdminGroupingManager({
         <div className="seed-list">
           {seededPlayers.map((player, index) => (
             <article className="seed-row" key={player.id}>
-              <span className="drag-handle">::</span>
-              <strong>#{index + 1}</strong>
-              <div>
+              <strong className="seed-rank">#{index + 1}</strong>
+              <div className="seed-player-main">
                 <b>{player.name}</b>
                 <p>{player.gender} · {ratingLabel(player.rating, t)}</p>
+                <div className="category-pills">
+                  {player.categories.map((id) => (
+                    <span key={id}>{getCategoryLabel(id, language)}</span>
+                  ))}
+                </div>
               </div>
-              <div className="category-pills">
-                {player.categories.map((id) => (
-                  <span key={id}>{getCategoryLabel(id, language)}</span>
-                ))}
-              </div>
-              <div className="row-actions">
-                <button className="ghost-button" type="button" onClick={() => moveSeed(index, -1)}>
-                  ↑
+              <div className="seed-actions">
+                <button
+                  className="ghost-button"
+                  type="button"
+                  onClick={() => moveSeed(index, -1)}
+                  disabled={index === 0}
+                >
+                  {t("moveUp")}
                 </button>
-                <button className="ghost-button" type="button" onClick={() => moveSeed(index, 1)}>
-                  ↓
+                <button
+                  className="ghost-button"
+                  type="button"
+                  onClick={() => moveSeed(index, 1)}
+                  disabled={index === seededPlayers.length - 1}
+                >
+                  {t("moveDown")}
                 </button>
               </div>
             </article>
@@ -307,7 +316,7 @@ export default function AdminGroupingManager({
             />
           </label>
           <div className="form-hint">
-            {t("autoCalculateGroups")}: {resolvedGroupCount} · {t("autoCalculateGroupSize")}
+            {t("autoCalculateGroups")}: {resolvedGroupCount} 路 {t("autoCalculateGroupSize")}
           </div>
           <button className="primary-button" type="button" onClick={generateGroups}>
             {t("generateGroups")}
@@ -354,7 +363,7 @@ export default function AdminGroupingManager({
 
                     return (
                       <div className="group-player-row" key={playerId}>
-                        <span>{index + 1}. {player.name} · {ratingLabel(player.rating, t)}</span>
+                        <span>{index + 1}. {player.name} 路 {ratingLabel(player.rating, t)}</span>
                         <select value={group.id} onChange={(event) => movePlayerToGroup(playerId, event.target.value)}>
                           {draftGroups.map((targetGroup) => (
                             <option key={targetGroup.id} value={targetGroup.id}>
@@ -378,7 +387,7 @@ export default function AdminGroupingManager({
               <h3>{t("unassigned")}</h3>
               {unassignedPlayers.map((player) => (
                 <div className="group-player-row" key={player.id}>
-                  <span>{player.name} · {ratingLabel(player.rating, t)}</span>
+                  <span>{player.name} 路 {ratingLabel(player.rating, t)}</span>
                   <select defaultValue="" onChange={(event) => movePlayerToGroup(player.id, event.target.value)}>
                     <option value="" disabled>{t("moveTo")}</option>
                     {draftGroups.map((group) => (
@@ -396,3 +405,4 @@ export default function AdminGroupingManager({
     </section>
   );
 }
+

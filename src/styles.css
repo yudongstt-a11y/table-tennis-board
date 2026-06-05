@@ -1051,12 +1051,17 @@ h2 {
 .grouping-panel,
 .workflow-grid,
 .workflow-card,
-.seed-list,
 .group-results-grid,
 .group-player-list,
 .unassigned-box {
   display: grid;
   gap: 14px;
+}
+
+.seed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .workflow-grid {
@@ -1096,18 +1101,44 @@ h2 {
 
 .seed-row {
   display: grid;
-  grid-template-columns: 34px 54px minmax(160px, 1fr) minmax(160px, 1fr) auto;
-  gap: 10px;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  gap: 14px;
   align-items: center;
-  border: 1px solid #edf2f7;
-  border-radius: 8px;
-  padding: 10px;
+  min-height: 72px;
+  border: 1px solid #dbe4f0;
+  border-radius: 14px;
+  padding: 12px 16px;
+  background: #ffffff;
 }
 
-.drag-handle {
-  color: #94a3b8;
+.seed-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border-radius: 12px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  font-size: 18px;
   font-weight: 900;
-  cursor: grab;
+}
+
+.seed-player-main {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.seed-player-main b {
+  color: #172033;
+  font-size: 16px;
+}
+
+.seed-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .seed-row p,
@@ -1930,12 +1961,21 @@ h2 {
   }
 
   .seed-row {
-    grid-template-columns: 34px 54px 1fr;
+    grid-template-columns: 1fr;
+    align-items: stretch;
   }
 
-  .seed-row .category-pills,
-  .seed-row .row-actions {
-    grid-column: 1 / -1;
+  .seed-rank {
+    justify-content: flex-start;
+    padding: 0 12px;
+  }
+
+  .seed-actions {
+    justify-content: stretch;
+  }
+
+  .seed-actions .ghost-button {
+    flex: 1 1 120px;
   }
 
   .group-player-row {
