@@ -17,6 +17,7 @@ import {
   doublesEntryRatingLine,
   doublesEntrySummary,
 } from "../utils/doublesEntries.js";
+import { generateKnockoutMatches } from "../utils/knockoutBracket.js";
 import { ratingLabel } from "./PlayerAutocomplete.jsx";
 
 function seedingId(eventId, stageId) {
@@ -356,6 +357,22 @@ export default function AdminGroupingManager({
     setNotice(t("matchesGenerated"));
   }
 
+  function generateKnockoutBracket() {
+    if (!selectedStage || selectedStage.format !== "knockout") return;
+    if (!seededPlayers.length) return;
+
+    if (!window.confirm(t("generateKnockoutConfirm"))) return;
+
+    const generatedMatches = generateKnockoutMatches({
+      entries: seededPlayers,
+      stage: selectedStage,
+      tournamentId: tournamentSettings.id,
+    });
+    const retainedMatches = matches.filter((match) => match.stageId !== selectedStage.id);
+    onMatchesChange([...retainedMatches, ...generatedMatches]);
+    setNotice(t("matchesGenerated"));
+  }
+
   const assignedIds = new Set(draftGroups.flatMap((group) => groupEntryIds(group)));
   const unassignedPlayers = seededPlayers.filter((player) => !assignedIds.has(player.id));
   const entryCountLabel = isDoublesEvent
@@ -426,6 +443,11 @@ export default function AdminGroupingManager({
             <button className="primary-button" type="button" onClick={saveSeeding}>
               {t("saveSeedingOrder")}
             </button>
+            {selectedStage?.format === "knockout" && (
+              <button className="primary-button" type="button" onClick={generateKnockoutBracket}>
+                {t("generateKnockoutBracket")}
+              </button>
+            )}
           </div>
         </div>
 

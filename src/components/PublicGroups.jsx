@@ -90,7 +90,7 @@ function BracketRounds({ matches, t }) {
     <div className="bracket-board">
       {sortedRounds.map(([round, roundMatches]) => (
         <section className="bracket-round" key={round}>
-          <h3>{roundLabel(round, sortedRounds.length, t)}</h3>
+          <h3>{roundMatches[0]?.round || roundLabel(round, sortedRounds.length, t)}</h3>
           {roundMatches
             .sort(
               (a, b) =>

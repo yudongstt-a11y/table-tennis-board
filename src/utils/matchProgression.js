@@ -211,6 +211,7 @@ function fillSlot(match, side, sourceMatch, sourceSide) {
     [`${targetPrefix}Id`]: sourceMatch[`${sourcePrefix}Id`],
     [`${targetPrefix}Name`]: sourceMatch[`${sourcePrefix}Name`],
     [`${targetPrefix}Rating`]: sourceMatch[`${sourcePrefix}Rating`],
+    [`${targetPrefix}Members`]: sourceMatch[`${sourcePrefix}Members`] || null,
   };
 }
 
