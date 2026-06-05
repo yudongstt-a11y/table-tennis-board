@@ -70,9 +70,13 @@ create table if not exists public.stages (
   default_minutes integer not null,
   stage_order integer default 1,
   table_allocation integer default 1,
+  next_stage_config jsonb default '{}'::jsonb,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+alter table public.stages
+  add column if not exists next_stage_config jsonb default '{}'::jsonb;
 
 create table if not exists public.seedings (
   id uuid primary key default gen_random_uuid(),

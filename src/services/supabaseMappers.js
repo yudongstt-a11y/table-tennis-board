@@ -105,6 +105,7 @@ export function stageFromDb(row) {
     order: row.stage_order || 1,
     tableAllocation: row.table_allocation || 1,
     division: row.division || null,
+    nextStageConfig: row.next_stage_config || {},
   };
 }
 
@@ -121,6 +122,7 @@ export function stageToDb(stage, tournamentId) {
     default_minutes: stage.defaultMatchMinutes,
     stage_order: Number(stage.order) || 1,
     table_allocation: Number(stage.tableAllocation) || 1,
+    next_stage_config: stage.nextStageConfig || {},
   };
 }
 

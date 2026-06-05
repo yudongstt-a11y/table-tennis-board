@@ -1235,7 +1235,7 @@ h2 {
 
 .group-settings {
   display: grid;
-  grid-template-columns: repeat(2, minmax(180px, 1fr)) minmax(240px, 1fr) auto;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
   align-items: end;
 }
@@ -1263,6 +1263,23 @@ h2 {
 
 .group-card h3 {
   margin: 0;
+}
+
+.next-stage-info {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 13px;
+}
+
+.next-stage-info p {
+  margin: 0;
+  color: #33527f;
 }
 
 .group-player-row {

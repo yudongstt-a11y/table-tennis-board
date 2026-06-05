@@ -147,6 +147,7 @@ export function calculateGroupStandings({ group, matches, players, seedOrder = [
 }
 
 export function generateDivisionEntriesFromGroupStandings({ groups, matches, players, targetEventId, seedOrder = [] }) {
+  const seedIndex = makeSeedIndex(seedOrder);
   const divisions = {
     division1: [],
     division2: [],
@@ -161,16 +162,75 @@ export function generateDivisionEntriesFromGroupStandings({ groups, matches, pla
       const standings = calculateGroupStandings({ group, matches, players, seedOrder });
       standings.slice(0, 4).forEach((row, index) => {
         const entry = players.find((player) => player.id === row.entryId);
-        if (entry) divisions[`division${index + 1}`].push(entry);
+        if (entry) {
+          divisions[`division${index + 1}`].push({
+            ...entry,
+            groupRank: row.rank,
+            groupWins: row.wins,
+            groupGameDifference: row.gameDifference,
+            seedRank: seedIndex.get(row.entryId) || 9999,
+          });
+        }
       });
     });
 
+  Object.keys(divisions).forEach((key) => {
+    divisions[key].sort(
+      (a, b) =>
+        (b.groupWins || 0) - (a.groupWins || 0) ||
+        (b.groupGameDifference || 0) - (a.groupGameDifference || 0) ||
+        (a.seedRank || 9999) - (b.seedRank || 9999)
+    );
+  });
+
   return divisions;
+}
+
+export function generateKnockoutEntriesFromGroupStandings({
+  groups,
+  matches,
+  players,
+  targetEventId,
+  qualifiersPerGroup = 2,
+  seedOrder = [],
+}) {
+  const seedIndex = makeSeedIndex(seedOrder);
+  const rows = [];
+
+  groups
+    .filter((group) => group.eventId === targetEventId)
+    .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0))
+    .forEach((group) => {
+      const standings = calculateGroupStandings({ group, matches, players, seedOrder });
+      standings.slice(0, Number(qualifiersPerGroup) || 1).forEach((row) => {
+        const entry = players.find((player) => player.id === row.entryId);
+        if (!entry) return;
+        rows.push({
+          ...entry,
+          groupRank: row.rank,
+          groupWins: row.wins,
+          groupGameDifference: row.gameDifference,
+          seedRank: seedIndex.get(row.entryId) || 9999,
+        });
+      });
+    });
+
+  return rows.sort(
+    (a, b) =>
+      (a.groupRank || 9999) - (b.groupRank || 9999) ||
+      (b.groupWins || 0) - (a.groupWins || 0) ||
+      (b.groupGameDifference || 0) - (a.groupGameDifference || 0) ||
+      (a.seedRank || 9999) - (b.seedRank || 9999)
+  );
 }
 
 export function getStageDivision(stage) {
   if (stage?.division) return Number(stage.division);
   const text = `${stage?.nameZh || ""} ${stage?.nameEn || ""}`;
+  const divisionMatch = text.match(/division\s*([1-4])|div\s*([1-4])|第\s*([1-4一二三四])|第([一二三四])/i);
+  const divisionValue = divisionMatch?.[1] || divisionMatch?.[2] || divisionMatch?.[3] || divisionMatch?.[4];
+  const zhDivisionMap = { 一: 1, 二: 2, 三: 3, 四: 4 };
+  if (divisionValue) return Number(zhDivisionMap[divisionValue] || divisionValue);
   const match = text.match(/division\s*([1-4])|div\s*([1-4])|第\s*([1-4])\s*组/i);
   return match ? Number(match[1] || match[2] || match[3]) : null;
 }

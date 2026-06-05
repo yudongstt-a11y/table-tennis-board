@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CATEGORIES, getCategoryLabel } from "../constants/categories.js";
 import { getStageFormatLabel } from "../constants/matchFormats.js";
 import {
@@ -22,6 +22,7 @@ import { brisbaneDateTimeToIso, getMatchDurationMinutes } from "../utils/matchSc
 import {
   calculateGroupStandings,
   generateDivisionEntriesFromGroupStandings,
+  generateKnockoutEntriesFromGroupStandings,
   getStageDivision,
 } from "../utils/standings.js";
 import { ratingLabel } from "./PlayerAutocomplete.jsx";
@@ -53,6 +54,7 @@ export default function AdminGroupingManager({
   t,
   onSeedingsChange,
   onGroupsChange,
+  onStagesChange,
   onMatchesChange,
 }) {
   const [eventId, setEventId] = useState("singles");
@@ -63,6 +65,9 @@ export default function AdminGroupingManager({
   const [draftGroups, setDraftGroups] = useState([]);
   const [notice, setNotice] = useState("");
   const [generateDraft, setGenerateDraft] = useState(null);
+  const [nextStageMode, setNextStageMode] = useState("division");
+  const [qualifiersPerGroup, setQualifiersPerGroup] = useState(2);
+  const [divisionCount, setDivisionCount] = useState(4);
 
   const eventPlayers = useMemo(
     () =>
@@ -115,6 +120,14 @@ export default function AdminGroupingManager({
     })));
   }, [eventId, eventPlayers, eventEntries, isDoublesEvent, pairEntries, selectedStage?.id]);
 
+  useEffect(() => {
+    if (!selectedStage || selectedStage.format !== "round_robin") return;
+    const config = selectedStage.nextStageConfig || {};
+    setNextStageMode(config.mode || "division");
+    setQualifiersPerGroup(config.qualifiersPerGroup || 2);
+    setDivisionCount(config.divisionCount || Number(groupSize) || 4);
+  }, [selectedStage?.id, selectedStage?.format]);
+
   const entriesById = useMemo(() => new Map(eventEntries.map((entry) => [entry.id, entry])), [eventEntries]);
   const seededPlayers = seedPlayerIds.map((id) => entriesById.get(id)).filter(Boolean);
   const resolvedGroupCount = calculateGroupCount(seedPlayerIds.length, groupSize, groupCount);
@@ -152,6 +165,16 @@ export default function AdminGroupingManager({
 
   function generateGroups() {
     if (!selectedStage) return;
+    const nextStageConfig =
+      nextStageMode === "knockout"
+        ? {
+            mode: "knockout",
+            qualifiersPerGroup: Math.max(1, Number(qualifiersPerGroup) || 1),
+          }
+        : {
+            mode: "division",
+            divisionCount: Math.max(1, Number(divisionCount) || Number(groupSize) || 4),
+          };
     const generated = isDoublesEvent
       ? generateFairEntryGroups({
           seedEntryIds: seedPlayerIds,
@@ -174,7 +197,16 @@ export default function AdminGroupingManager({
       published: false,
     }));
     setDraftGroups(nextGroups);
-    setNotice("");
+    onGroupsChange([
+      ...groups.filter((group) => !(group.eventId === eventId && group.stageId === selectedStage.id)),
+      ...nextGroups,
+    ]);
+    onStagesChange?.(
+      stages.map((stage) =>
+        stage.id === selectedStage.id ? { ...stage, nextStageConfig } : stage
+      )
+    );
+    setNotice(t("groupsGeneratedWithNextStageSettings"));
   }
 
   function movePlayerToGroup(playerId, targetGroupId) {
@@ -389,8 +421,50 @@ export default function AdminGroupingManager({
     setNotice(t("matchesGenerated"));
   }
 
+  function generateKnockoutFromStandings() {
+    if (!selectedStage || selectedStage.format !== "round_robin") return;
+    const config = selectedStage.nextStageConfig || {};
+    const qualifiers = Math.max(1, Number(config.qualifiersPerGroup || qualifiersPerGroup) || 1);
+    const targetStage = stages.find(
+      (stage) =>
+        stage.eventId === eventId &&
+        stage.format === "knockout" &&
+        stage.id !== selectedStage.id &&
+        !getStageDivision(stage)
+    ) || stages.find((stage) => stage.eventId === eventId && stage.format === "knockout");
+
+    if (!targetStage) {
+      setNotice(t("noKnockoutStageAvailable"));
+      return;
+    }
+    if (!window.confirm(t("generateKnockoutFromStandingsConfirm"))) return;
+
+    const sourceGroups = groups.filter((group) => group.eventId === eventId && group.stageId === selectedStage.id);
+    const entries = generateKnockoutEntriesFromGroupStandings({
+      groups: sourceGroups,
+      matches,
+      players: eventEntries,
+      targetEventId: eventId,
+      qualifiersPerGroup: qualifiers,
+      seedOrder: seedPlayerIds,
+    });
+    if (!entries.length) {
+      setNotice(t("noStageData"));
+      return;
+    }
+
+    const generatedMatches = generateKnockoutMatches({
+      entries,
+      stage: targetStage,
+      tournamentId: tournamentSettings.id,
+    });
+    const retainedMatches = matches.filter((match) => match.stageId !== targetStage.id);
+    onMatchesChange([...retainedMatches, ...generatedMatches]);
+    setNotice(t("matchesGenerated"));
+  }
+
   function generateDivisionBrackets() {
-    if (eventId !== "singles" || selectedStage?.format !== "knockout") return;
+    if (eventId !== "singles") return;
     if (!window.confirm(t("generateDivisionBracketsConfirm"))) return;
 
     const roundRobinStages = stages.filter((stage) => stage.eventId === "singles" && stage.format === "round_robin");
@@ -415,7 +489,10 @@ export default function AdminGroupingManager({
     divisionStages.forEach((stage) => {
       const division = getStageDivision(stage);
       const entries = [...(divisions[`division${division}`] || [])].sort(
-        (a, b) => (seedRank.get(a.id) || 9999) - (seedRank.get(b.id) || 9999)
+        (a, b) =>
+          (b.groupWins || 0) - (a.groupWins || 0) ||
+          (b.groupGameDifference || 0) - (a.groupGameDifference || 0) ||
+          (a.seedRank || seedRank.get(a.id) || 9999) - (b.seedRank || seedRank.get(b.id) || 9999)
       );
       if (!entries.length) return;
       generatedMatches.push(
@@ -622,6 +699,9 @@ export default function AdminGroupingManager({
                 onChange={(event) => {
                   setGroupSize(event.target.value);
                   setGroupCount("");
+                  if (nextStageMode === "division") {
+                    setDivisionCount(event.target.value);
+                  }
                 }}
               />
             </label>
@@ -637,6 +717,39 @@ export default function AdminGroupingManager({
             <div className="form-hint">
               {t("autoCalculateGroups")}: {resolvedGroupCount} · {t("autoCalculateGroupSize")}
             </div>
+            <label>
+              <span>{t("nextStageFormat")}</span>
+              <select value={nextStageMode} onChange={(event) => setNextStageMode(event.target.value)}>
+                <option value="division">{t("bestDivisionMode")}</option>
+                <option value="knockout">{t("knockout")}</option>
+              </select>
+            </label>
+            {nextStageMode === "knockout" ? (
+              <>
+                <label>
+                  <span>{t("qualifiersPerGroup")}</span>
+                  <input
+                    min="1"
+                    type="number"
+                    value={qualifiersPerGroup}
+                    onChange={(event) => setQualifiersPerGroup(event.target.value)}
+                  />
+                </label>
+                <div className="form-hint">
+                  {t("totalQualifiers")}: {resolvedGroupCount * (Number(qualifiersPerGroup) || 1)}
+                </div>
+              </>
+            ) : (
+              <label>
+                <span>{t("divisionCount")}</span>
+                <input
+                  min="1"
+                  type="number"
+                  value={divisionCount}
+                  onChange={(event) => setDivisionCount(event.target.value)}
+                />
+              </label>
+            )}
             <button className="primary-button" type="button" onClick={generateGroups}>
               {t("generateGroups")}
             </button>
@@ -672,6 +785,16 @@ export default function AdminGroupingManager({
               <button className="ghost-button" type="button" onClick={() => setNotice(t("standingsRefreshed"))}>
                 {t("refreshStandings")}
               </button>
+              {(selectedStage.nextStageConfig?.mode || nextStageMode) === "knockout" && (
+                <button className="ghost-button" type="button" onClick={generateKnockoutFromStandings}>
+                  {t("generateKnockoutFromStandings")}
+                </button>
+              )}
+              {(selectedStage.nextStageConfig?.mode || nextStageMode) === "division" && eventId === "singles" && (
+                <button className="ghost-button" type="button" onClick={generateDivisionBrackets}>
+                  {t("generateDivisionBrackets")}
+                </button>
+              )}
             </div>
           </div>
 

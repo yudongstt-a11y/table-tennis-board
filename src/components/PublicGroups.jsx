@@ -38,6 +38,30 @@ function roundLabel(round, totalRounds, t) {
   return `${t("round")} ${round}`;
 }
 
+function NextStageInfo({ stage, t }) {
+  const config = stage?.nextStageConfig || {};
+  if (stage?.format !== "round_robin" || !config.mode) return null;
+
+  if (config.mode === "knockout") {
+    return (
+      <div className="next-stage-info">
+        <strong>{t("nextStageFormat")}: {t("knockout")}</strong>
+        <p>{t("qualifiersPerGroup")}: {config.qualifiersPerGroup || 1}</p>
+      </div>
+    );
+  }
+
+  const divisionCount = Number(config.divisionCount) || 4;
+  return (
+    <div className="next-stage-info">
+      <strong>{t("nextStageFormat")}: {t("bestDivisionMode")}</strong>
+      {Array.from({ length: divisionCount }, (_, index) => (
+        <p key={index}>{t(`groupRank${index + 1}EntersDivision${index + 1}`)}</p>
+      ))}
+    </div>
+  );
+}
+
 function StandingsTable({ standings, t }) {
   return (
     <div className="standings-table-wrap">
@@ -231,6 +255,7 @@ export default function PublicGroups({ groups, matches, players, doublesPairs = 
                 </p>
                 <h2>{stageName(stage, language)}</h2>
                 <p className="subtle">{getStageFormatLabel(stage.format, language)}</p>
+                <NextStageInfo stage={stage} t={t} />
               </div>
             </div>
 

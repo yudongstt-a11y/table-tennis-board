@@ -416,6 +416,7 @@ export default function AdminDashboard({
           t={t}
           onSeedingsChange={onSeedingsChange}
           onGroupsChange={onGroupsChange}
+          onStagesChange={onStagesChange}
           onDoublesPairsChange={onDoublesPairsChange}
           onMatchesChange={onMatchesChange}
         />
