@@ -242,6 +242,10 @@ export const translations = {
     groupsUnpublished: "分组已取消发布",
     noGroupsAvailable: "暂无分组信息",
     noBracketAvailable: "暂无淘汰赛位次图",
+    noStageData: "该阶段暂无分组或对阵信息",
+    doubles: "双打组",
+    stageOne: "第一阶段",
+    stageTwo: "第二阶段",
     final: "决赛",
   },
   en: {
@@ -487,6 +491,10 @@ export const translations = {
     groupsUnpublished: "Groups unpublished",
     noGroupsAvailable: "No groups available yet",
     noBracketAvailable: "No bracket available yet",
+    noStageData: "No group or bracket data for this stage yet",
+    doubles: "Doubles",
+    stageOne: "Stage 1",
+    stageTwo: "Stage 2",
     final: "Final",
   },
 };

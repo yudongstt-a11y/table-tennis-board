@@ -1305,6 +1305,16 @@ h2 {
   background: #175cd3;
 }
 
+.event-tabs {
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.event-tabs button {
+  flex: 0 0 auto;
+  min-width: 150px;
+}
+
 .timeline-list {
   display: grid;
   gap: 12px;
