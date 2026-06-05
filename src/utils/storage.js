@@ -11,6 +11,8 @@ const STAGES_KEY = "table_tennis_schedule_stages";
 const TABLE_CONTROLS_KEY = "table_tennis_table_controls";
 const BREAKS_KEY = "table_tennis_breaks";
 const TOURNAMENT_CONTROL_KEY = "table_tennis_tournament_control";
+const SEEDINGS_KEY = "table_tennis_seedings";
+const GROUPS_KEY = "table_tennis_groups";
 
 function readArray(key, fallback) {
   try {
@@ -185,6 +187,22 @@ export function saveTournamentControl(tournamentControl) {
   localStorage.setItem(TOURNAMENT_CONTROL_KEY, JSON.stringify(tournamentControl));
 }
 
+export function getSeedings() {
+  return readArray(SEEDINGS_KEY, []);
+}
+
+export function saveSeedings(seedings) {
+  localStorage.setItem(SEEDINGS_KEY, JSON.stringify(seedings));
+}
+
+export function getGroups() {
+  return readArray(GROUPS_KEY, []);
+}
+
+export function saveGroups(groups) {
+  localStorage.setItem(GROUPS_KEY, JSON.stringify(groups));
+}
+
 export function getMatches() {
   const stages = getStages();
   return readArray(MATCHES_KEY, demoMatches).map((match) => upgradeMatch(match, stages));
@@ -201,6 +219,8 @@ export function resetDemoData() {
   saveTableControls(defaultTableControls());
   saveBreaks(demoBreaks);
   saveTournamentControl(defaultTournamentControl());
+  saveSeedings([]);
+  saveGroups([]);
   return {
     matches: getMatches(),
     players: getPlayers(),
@@ -208,6 +228,8 @@ export function resetDemoData() {
     tableControls: getTableControls(),
     breaks: getBreaks(),
     tournamentControl: getTournamentControl(),
+    seedings: getSeedings(),
+    groups: getGroups(),
   };
 }
 

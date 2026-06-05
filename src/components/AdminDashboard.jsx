@@ -11,6 +11,7 @@ import {
 } from "../utils/matchProgression.js";
 import { calculateRemainingSeconds, formatCountdown, formatOvertime } from "../utils/matchTimer.js";
 import { resetDemoData } from "../utils/storage.js";
+import AdminGroupingManager from "./AdminGroupingManager.jsx";
 import AdminPlayersManager from "./AdminPlayersManager.jsx";
 import AdminStagesManager from "./AdminStagesManager.jsx";
 import LanguageToggle from "./LanguageToggle.jsx";
@@ -62,6 +63,8 @@ export default function AdminDashboard({
   tableControls,
   breaks,
   tournamentControl,
+  seedings,
+  groups,
   onLanguageChange,
   onMatchesChange,
   onPlayersChange,
@@ -69,6 +72,8 @@ export default function AdminDashboard({
   onTableControlsChange,
   onBreaksChange,
   onTournamentControlChange,
+  onSeedingsChange,
+  onGroupsChange,
   onTournamentStateChange,
   onReplaceAllData,
   onLogout,
@@ -326,7 +331,7 @@ export default function AdminDashboard({
       </header>
 
       <nav className="top-tabs" aria-label="Admin sections">
-        {["matches", "players", "stages", "control"].map((tab) => (
+        {["matches", "players", "stages", "grouping", "control"].map((tab) => (
           <button
             className={activeTab === tab ? "active" : ""}
             type="button"
@@ -348,6 +353,19 @@ export default function AdminDashboard({
         />
       ) : activeTab === "stages" ? (
         <AdminStagesManager stages={stages} language={language} t={t} onStagesChange={onStagesChange} />
+      ) : activeTab === "grouping" ? (
+        <AdminGroupingManager
+          players={players}
+          stages={stages}
+          seedings={seedings}
+          groups={groups}
+          matches={matches}
+          language={language}
+          t={t}
+          onSeedingsChange={onSeedingsChange}
+          onGroupsChange={onGroupsChange}
+          onMatchesChange={onMatchesChange}
+        />
       ) : activeTab === "control" ? (
         <TournamentControl
           matches={matches}

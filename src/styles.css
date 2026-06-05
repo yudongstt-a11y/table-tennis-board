@@ -1039,6 +1039,115 @@ h2 {
   color: #607086;
 }
 
+.grouping-panel,
+.workflow-grid,
+.workflow-card,
+.seed-list,
+.group-results-grid,
+.group-player-list,
+.unassigned-box {
+  display: grid;
+  gap: 14px;
+}
+
+.workflow-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.workflow-card,
+.unassigned-box {
+  border: 1px solid #dbe5ef;
+  border-radius: 8px;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.workflow-card select,
+.workflow-card input,
+.group-player-row select {
+  min-height: 44px;
+  border: 1px solid #cad7e5;
+  border-radius: 8px;
+  padding: 0 10px;
+  color: #172033;
+  background: #ffffff;
+}
+
+.section-title-row,
+.group-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.grouping-segmented {
+  width: 100%;
+}
+
+.seed-row {
+  display: grid;
+  grid-template-columns: 34px 54px minmax(160px, 1fr) minmax(160px, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid #edf2f7;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.drag-handle {
+  color: #94a3b8;
+  font-weight: 900;
+  cursor: grab;
+}
+
+.seed-row p,
+.group-player-row p {
+  margin: 0;
+  color: #607086;
+}
+
+.group-settings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr)) minmax(240px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.group-settings label {
+  display: grid;
+  gap: 7px;
+  color: #44566f;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.group-results-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.group-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #edf2f7;
+  border-radius: 8px;
+  padding: 14px;
+  background: #fbfdff;
+}
+
+.group-card h3 {
+  margin: 0;
+}
+
+.group-player-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(150px, auto) auto;
+  gap: 8px;
+  align-items: center;
+  border-top: 1px solid #edf2f7;
+  padding-top: 8px;
+}
+
 .break-notice,
 .tournament-banner {
   border: 1px solid #bbf7d0;
@@ -1622,7 +1731,28 @@ h2 {
   .admin-inline-controls,
   .stage-grid,
   .control-grid,
+  .workflow-grid,
+  .group-results-grid,
+  .group-settings,
   .break-card {
+    grid-template-columns: 1fr;
+  }
+
+  .section-title-row,
+  .group-card-header {
+    display: grid;
+  }
+
+  .seed-row {
+    grid-template-columns: 34px 54px 1fr;
+  }
+
+  .seed-row .category-pills,
+  .seed-row .row-actions {
+    grid-column: 1 / -1;
+  }
+
+  .group-player-row {
     grid-template-columns: 1fr;
   }
 

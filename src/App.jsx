@@ -9,12 +9,16 @@ import {
   getTableControls,
   getBreaks,
   getTournamentControl,
+  getSeedings,
+  getGroups,
   saveMatches,
   savePlayers,
   saveStages,
   saveTableControls,
   saveBreaks,
   saveTournamentControl,
+  saveSeedings,
+  saveGroups,
 } from "./utils/storage.js";
 import { LANGUAGE_KEY } from "./i18n/translations.js";
 
@@ -46,6 +50,8 @@ export default function App() {
   const [tableControls, setTableControls] = useState(() => getTableControls());
   const [breaks, setBreaks] = useState(() => getBreaks());
   const [tournamentControl, setTournamentControl] = useState(() => getTournamentControl());
+  const [seedings, setSeedings] = useState(() => getSeedings());
+  const [groups, setGroups] = useState(() => getGroups());
   const [language, setLanguage] = useState(() => localStorage.getItem(LANGUAGE_KEY) || "zh");
   const [isLoggedIn, setIsLoggedIn] = useState(() => hasAdminSession());
 
@@ -132,6 +138,16 @@ export default function App() {
     saveTournamentControl(nextTournamentControl);
   }
 
+  function updateSeedings(nextSeedings) {
+    setSeedings(nextSeedings);
+    saveSeedings(nextSeedings);
+  }
+
+  function updateGroups(nextGroups) {
+    setGroups(nextGroups);
+    saveGroups(nextGroups);
+  }
+
   function updateTournamentState(nextMatches, nextTableControls) {
     updateMatches(nextMatches);
     updateTableControls(nextTableControls);
@@ -144,6 +160,8 @@ export default function App() {
     setTableControls(nextData.tableControls);
     setBreaks(nextData.breaks);
     setTournamentControl(nextData.tournamentControl);
+    setSeedings(nextData.seedings);
+    setGroups(nextData.groups);
   }
 
   function handleLogin(username, password, rememberMe) {
@@ -190,7 +208,13 @@ export default function App() {
     );
   }
 
-  if (path === "/admin/dashboard" || path === "/admin/players" || path === "/admin/stages" || path === "/admin/control") {
+  if (
+    path === "/admin/dashboard" ||
+    path === "/admin/players" ||
+    path === "/admin/stages" ||
+    path === "/admin/grouping" ||
+    path === "/admin/control"
+  ) {
     if (!isLoggedIn && !hasAdminSession()) {
       return (
         <AdminLogin
@@ -209,9 +233,11 @@ export default function App() {
             ? "players"
             : path === "/admin/stages"
               ? "stages"
-              : path === "/admin/control"
-                ? "control"
-                : "matches"
+              : path === "/admin/grouping"
+                ? "grouping"
+                : path === "/admin/control"
+                  ? "control"
+                  : "matches"
         }
         language={language}
         matches={sortedMatches}
@@ -220,6 +246,8 @@ export default function App() {
         tableControls={tableControls}
         breaks={breaks}
         tournamentControl={tournamentControl}
+        seedings={seedings}
+        groups={groups}
         onLanguageChange={updateLanguage}
         onMatchesChange={updateMatches}
         onPlayersChange={updatePlayers}
@@ -227,6 +255,8 @@ export default function App() {
         onTableControlsChange={updateTableControls}
         onBreaksChange={updateBreaks}
         onTournamentControlChange={updateTournamentControl}
+        onSeedingsChange={updateSeedings}
+        onGroupsChange={updateGroups}
         onTournamentStateChange={updateTournamentState}
         onReplaceAllData={replaceAllData}
         onLogout={handleLogout}
