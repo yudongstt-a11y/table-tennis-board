@@ -33,7 +33,7 @@ function matchesForPlayer(player, matches) {
 export default function PublicPlayersList({ players, matches, language, t }) {
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState("all");
-  const [sort, setSort] = useState("name");
+  const [sort, setSort] = useState("rating_desc");
   const [selectedPlayer, setSelectedPlayer] = useState(null);
 
   const visiblePlayers = useMemo(() => {
@@ -46,11 +46,11 @@ export default function PublicPlayersList({ players, matches, language, t }) {
         return matchesSearch && matchesCategory;
       })
       .sort((a, b) => {
-        if (sort === "rating-desc") {
+        if (sort === "rating_desc") {
           return (b.rating ?? -1) - (a.rating ?? -1) || a.name.localeCompare(b.name);
         }
 
-        if (sort === "rating-asc") {
+        if (sort === "rating_asc") {
           return (a.rating ?? 99999) - (b.rating ?? 99999) || a.name.localeCompare(b.name);
         }
 
@@ -86,8 +86,8 @@ export default function PublicPlayersList({ players, matches, language, t }) {
           <span>{t("sort")}</span>
           <select value={sort} onChange={(event) => setSort(event.target.value)}>
             <option value="name">{t("name")}</option>
-            <option value="rating-desc">{t("ratingHighToLow")}</option>
-            <option value="rating-asc">{t("ratingLowToHigh")}</option>
+            <option value="rating_desc">{t("ratingHighToLow")}</option>
+            <option value="rating_asc">{t("ratingLowToHigh")}</option>
           </select>
         </label>
       </div>

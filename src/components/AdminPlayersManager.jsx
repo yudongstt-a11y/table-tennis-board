@@ -7,10 +7,6 @@ import {
 } from "../data/officialPlayers.js";
 import PlayerForm, { emptyPlayer } from "./PlayerForm.jsx";
 import { ratingLabel } from "./PlayerAutocomplete.jsx";
-import {
-  buildDoublesEntriesFromPlayers,
-  doublesEntryDisplayName,
-} from "../utils/doublesEntries.js";
 
 function normalize(value) {
   return String(value).trim().toLowerCase();
@@ -62,7 +58,7 @@ export default function AdminPlayersManager({
 }) {
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState("all");
-  const [sort, setSort] = useState("name");
+  const [sort, setSort] = useState("rating_desc");
   const [draft, setDraft] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [formError, setFormError] = useState("");
@@ -71,11 +67,6 @@ export default function AdminPlayersManager({
   const [bulkNotice, setBulkNotice] = useState("");
 
   const selectedSet = useMemo(() => new Set(selectedPlayerIds), [selectedPlayerIds]);
-  const pairEntries = useMemo(
-    () => buildDoublesEntriesFromPlayers(players),
-    [players]
-  );
-
   const visiblePlayers = useMemo(() => {
     const term = normalize(search);
 
@@ -86,11 +77,11 @@ export default function AdminPlayersManager({
         return matchesSearch && matchesCategory;
       })
       .sort((a, b) => {
-        if (sort === "rating-desc") {
+        if (sort === "rating_desc") {
           return (b.rating ?? -1) - (a.rating ?? -1) || a.name.localeCompare(b.name);
         }
 
-        if (sort === "rating-asc") {
+        if (sort === "rating_asc") {
           return (a.rating ?? 99999) - (b.rating ?? 99999) || a.name.localeCompare(b.name);
         }
 
@@ -380,8 +371,8 @@ export default function AdminPlayersManager({
             <span>{t("sort")}</span>
             <select value={sort} onChange={(event) => setSort(event.target.value)}>
               <option value="name">{t("name")}</option>
-              <option value="rating-desc">{t("ratingHighToLow")}</option>
-              <option value="rating-asc">{t("ratingLowToHigh")}</option>
+              <option value="rating_desc">{t("ratingHighToLow")}</option>
+              <option value="rating_asc">{t("ratingLowToHigh")}</option>
               <option value="unrated">{t("unratedFirst")}</option>
             </select>
           </label>
@@ -426,40 +417,6 @@ export default function AdminPlayersManager({
       </div>
 
       {bulkNotice && <div className="status-notice">{bulkNotice}</div>}
-
-      <section className="workflow-card">
-        <div className="section-title-row">
-          <div>
-            <p className="eyebrow">{t("mixedDoubles")}</p>
-            <h2>{t("doublesPairs")}</h2>
-            <p className="subtle">
-              {pairEntries.length > 0 ? `${pairEntries.length} ${t("doublesPairsCount")}` : t("noDoublesPairs")}
-            </p>
-          </div>
-        </div>
-        {pairEntries.length > 0 && (
-          <div className="admin-list compact-list">
-            {pairEntries.map((pair, index) => (
-              <article className="admin-row player-row" key={pair.id}>
-                <strong className="player-rank">#{index + 1}</strong>
-                <div className="admin-match-main">
-                  <span className="avatar-pill">D</span>
-                  <div>
-                    <strong>{doublesEntryDisplayName(pair, language)}</strong>
-                    <p>
-                      {t("rating")}: {pair.playerARating ?? t("unrated")} / {pair.playerBRating ?? t("unrated")}
-                    </p>
-                    <p>
-                      {t("totalRating")}: {pair.totalRating ?? t("unrated")} · {pair.entryType}
-                    </p>
-                    {pair.notes && <p className="subtle">{pair.notes}</p>}
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
 
       <div className="admin-list">
         {visiblePlayers.map((player, index) => {
