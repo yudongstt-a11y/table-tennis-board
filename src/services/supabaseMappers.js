@@ -115,6 +115,9 @@ export function stageFromDb(row) {
 }
 
 export function stageToDb(stage, tournamentId) {
+  const defaultMinutes = stage.defaultMinutes || stage.defaultMatchMinutes || 25;
+  const stageOrder = stage.stageOrder || stage.order || 1;
+
   return {
     ...withUuidId(stage),
     tournament_id: tournamentId,
@@ -124,8 +127,8 @@ export function stageToDb(stage, tournamentId) {
     format: stage.format,
     match_format: stage.matchFormat,
     winner_games: stage.winnerGames,
-    default_minutes: stage.defaultMatchMinutes,
-    stage_order: Number(stage.order) || 1,
+    default_minutes: Number(defaultMinutes) || 25,
+    stage_order: Number(stageOrder) || 1,
     table_allocation: Number(stage.tableAllocation) || 1,
     next_stage_config: stage.nextStageConfig || {},
   };

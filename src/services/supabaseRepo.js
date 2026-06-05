@@ -270,7 +270,8 @@ export async function saveDoublesPairs(pairs, players = []) {
 }
 
 export async function saveStages(stages) {
-  await safeReplaceRows("stages", stages, stageToDb, "stage_order", ["next_stage_config"]);
+  const data = await safeReplaceRows("stages", stages, stageToDb, "stage_order", ["next_stage_config"]);
+  return data.map(stageFromDb);
 }
 
 export async function saveGroups(groups) {

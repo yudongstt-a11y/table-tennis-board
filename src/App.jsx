@@ -167,7 +167,18 @@ export default function App() {
   function updateStages(nextStages) {
     const sorted = [...nextStages].sort((a, b) => a.order - b.order);
     setStages(sorted);
-    saveStagesData(sorted).catch((error) => setDataSourceError(error.message));
+    return saveStagesData(sorted)
+      .then((savedStages) => {
+        if (Array.isArray(savedStages)) {
+          setStages([...savedStages].sort((a, b) => a.order - b.order));
+        }
+        setDataSourceError("");
+        return savedStages;
+      })
+      .catch((error) => {
+        setDataSourceError(error.message);
+        throw error;
+      });
   }
 
   function updateTableControls(nextTableControls) {
