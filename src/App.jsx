@@ -161,7 +161,21 @@ export default function App() {
   function updatePlayers(nextPlayers) {
     const sorted = [...nextPlayers].sort((a, b) => a.name.localeCompare(b.name));
     setPlayers(sorted);
-    savePlayersData(sorted).catch((error) => setDataSourceError(error.message));
+    return savePlayersData(sorted)
+      .then((savedPlayers) => {
+        if (Array.isArray(savedPlayers)) {
+          const savedSorted = [...savedPlayers].sort((a, b) => a.name.localeCompare(b.name));
+          setPlayers(savedSorted);
+          setDataSourceError("");
+          return savedSorted;
+        }
+        setDataSourceError("");
+        return sorted;
+      })
+      .catch((error) => {
+        setDataSourceError(error.message);
+        throw error;
+      });
   }
 
   function updateStages(nextStages) {
@@ -257,6 +271,16 @@ export default function App() {
     setDoublesPairs(nextData.doublesPairs || []);
     setDataSourceError(nextData.dataSourceError || "");
     setSupabaseDiagnostics(nextData.supabaseDiagnostics || null);
+    if (DATA_SOURCE === "supabase") {
+      console.log("[Supabase data]", {
+        tournamentSlug: nextData.supabaseDiagnostics?.tournament?.slug,
+        tournamentId: nextData.tournamentSettings?.id || nextData.supabaseDiagnostics?.tournament?.id,
+        playersCount: nextData.players?.length || 0,
+        stagesCount: nextData.stages?.length || 0,
+        groupsCount: nextData.groups?.length || 0,
+        matchesCount: nextData.matches?.length || 0,
+      });
+    }
   }
 
   function clearLocalCache() {

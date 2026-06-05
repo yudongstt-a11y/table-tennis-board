@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { CATEGORIES, getCategoryLabel } from "../constants/categories.js";
 import {
   officialDoublesPairs,
@@ -151,8 +151,14 @@ export default function AdminPlayersManager({
     return "";
   }
 
-  function handleSubmit(event) {
+  async function persistPlayers(nextPlayers) {
+    const savedPlayers = await onPlayersChange(nextPlayers);
+    return Array.isArray(savedPlayers) ? savedPlayers : nextPlayers;
+  }
+
+  async function handleSubmit(event) {
     event.preventDefault();
+    setBulkNotice("");
     const validationError = validateDraft();
     if (validationError) {
       setFormError(validationError);
@@ -160,30 +166,44 @@ export default function AdminPlayersManager({
     }
 
     const nextPlayer = normalizeDraft();
-
-    if (editingId) {
-      onPlayersChange(
-        players.map((player) =>
+    const nextPlayers = editingId
+      ? players.map((player) =>
           player.id === editingId ? { ...nextPlayer, id: editingId } : player
         )
-      );
-    } else {
-      onPlayersChange([
-        ...players,
-        {
-          ...nextPlayer,
-          id: `p${Date.now()}`,
-        },
-      ]);
-    }
+      : [
+          ...players,
+          {
+            ...nextPlayer,
+            id: `p${Date.now()}`,
+          },
+        ];
 
-    closeForm();
+    try {
+      const savedPlayers = await persistPlayers(nextPlayers);
+      const savedPlayer = savedPlayers.find((player) => normalize(player.name) === normalize(nextPlayer.name));
+      console.log("[Players] saved player", {
+        id: savedPlayer?.id,
+        tournamentId: savedPlayer?.tournamentId,
+        name: savedPlayer?.name || nextPlayer.name,
+      });
+      setBulkNotice(
+        `${t("savePlayer")}: ${savedPlayer?.name || nextPlayer.name}${savedPlayer?.id ? ` · ${savedPlayer.id}` : ""}`
+      );
+      closeForm();
+    } catch (error) {
+      setFormError(error.message);
+    }
   }
 
-  function deletePlayer(id) {
+  async function deletePlayer(id) {
     if (!window.confirm(t("confirmDeletePlayer"))) return;
-    onPlayersChange(players.filter((player) => player.id !== id));
-    setSelectedPlayerIds((ids) => ids.filter((item) => item !== id));
+    try {
+      await persistPlayers(players.filter((player) => player.id !== id));
+      setSelectedPlayerIds((ids) => ids.filter((item) => item !== id));
+      setBulkNotice(t("bulkActionCompleted"));
+    } catch (error) {
+      setBulkNotice(error.message);
+    }
   }
 
   async function importOfficialEntries() {
@@ -209,7 +229,7 @@ export default function AdminPlayersManager({
       if (onOfficialEntriesImport) {
         await onOfficialEntriesImport(importedPlayers);
       } else {
-        onPlayersChange(importedPlayers);
+        await persistPlayers(importedPlayers);
         await onOfficialDoublesImport?.(importedPlayers);
       }
       setSelectedPlayerIds([]);
@@ -257,15 +277,19 @@ export default function AdminPlayersManager({
     setBulkNotice("");
   }
 
-  function deleteSelected() {
+  async function deleteSelected() {
     const count = selectedPlayerIds.length;
     if (!count) return;
     const message = `${t("confirmBulkDeletePlayers", { count })} ${t("bulkDeleteKeepsMatches")}`;
     if (!window.confirm(message)) return;
 
-    onPlayersChange(players.filter((player) => !selectedSet.has(player.id)));
-    setSelectedPlayerIds([]);
-    setBulkNotice(t("bulkActionCompleted"));
+    try {
+      await persistPlayers(players.filter((player) => !selectedSet.has(player.id)));
+      setSelectedPlayerIds([]);
+      setBulkNotice(t("bulkActionCompleted"));
+    } catch (error) {
+      setBulkNotice(error.message);
+    }
   }
 
   function toggleBulkCategory(categoryId) {
@@ -281,7 +305,7 @@ export default function AdminPlayersManager({
     });
   }
 
-  function applyBulkEvents() {
+  async function applyBulkEvents() {
     if (!bulkDraft.categoryIds.length) {
       setBulkDraft((current) => ({ ...current, error: t("selectEvents") }));
       return;
@@ -314,29 +338,37 @@ export default function AdminPlayersManager({
       return { ...player, categories: nextCategories };
     });
 
-    onPlayersChange(nextPlayers);
-    setBulkDraft(null);
-    setBulkNotice(
-      skippedCount > 0
-        ? `${t("bulkEventsAddedWithSkipped", { count: updatedCount })} ${t("bulkGenderSkipped", { count: skippedCount })}`
-        : t("bulkActionCompleted")
-    );
+    try {
+      await persistPlayers(nextPlayers);
+      setBulkDraft(null);
+      setBulkNotice(
+        skippedCount > 0
+          ? `${t("bulkEventsAddedWithSkipped", { count: updatedCount })} ${t("bulkGenderSkipped", { count: skippedCount })}`
+          : t("bulkActionCompleted")
+      );
+    } catch (error) {
+      setBulkDraft((current) => ({ ...current, error: error.message }));
+    }
   }
 
-  function applyBulkRating(clear = false) {
+  async function applyBulkRating(clear = false) {
     if (!clear && (bulkDraft.rating === "" || Number.isNaN(Number(bulkDraft.rating)))) {
       setBulkDraft((current) => ({ ...current, error: t("ratingMustBeNumber") }));
       return;
     }
 
     const nextRating = clear ? null : Number(bulkDraft.rating);
-    onPlayersChange(
-      players.map((player) =>
-        selectedSet.has(player.id) ? { ...player, rating: nextRating } : player
-      )
-    );
-    setBulkDraft(null);
-    setBulkNotice(t("bulkActionCompleted"));
+    try {
+      await persistPlayers(
+        players.map((player) =>
+          selectedSet.has(player.id) ? { ...player, rating: nextRating } : player
+        )
+      );
+      setBulkDraft(null);
+      setBulkNotice(t("bulkActionCompleted"));
+    } catch (error) {
+      setBulkDraft((current) => ({ ...current, error: error.message }));
+    }
   }
 
   const selectedCountText =

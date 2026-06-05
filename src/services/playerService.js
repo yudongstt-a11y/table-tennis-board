@@ -1,7 +1,59 @@
 import { importOfficialDoublesPairsData, loadAllData, savePlayersData } from "./dataRepository.js";
 
+export function normalizePlayer(row) {
+  return {
+    id: row.id,
+    tournamentId: row.tournamentId || row.tournament_id,
+    name: row.name,
+    gender: row.gender || "Other",
+    rating: row.rating ?? null,
+    ratingNote: row.ratingNote || row.rating_note || "",
+    categories: Array.isArray(row.categories) ? row.categories : [],
+    doublesPartner: row.doublesPartner || row.doubles_partner || "",
+    needsDoublesPartner: Boolean(row.needsDoublesPartner ?? row.needs_doubles_partner),
+    notes: row.notes || "",
+    starRating: row.starRating ?? row.star_rating ?? null,
+    starPoints: row.starPoints ?? row.star_points ?? null,
+    createdAt: row.createdAt || row.created_at,
+    updatedAt: row.updatedAt || row.updated_at,
+  };
+}
+
+export function toPlayerRow(player, tournamentId) {
+  const row = {
+    tournament_id: tournamentId || player.tournamentId,
+    name: player.name,
+    gender: player.gender || "Other",
+    rating: player.rating === "" || player.rating === undefined ? null : player.rating,
+    rating_note: player.ratingNote || null,
+    categories: player.categories || [],
+    doubles_partner: player.doublesPartner || null,
+    needs_doubles_partner: Boolean(player.needsDoublesPartner),
+    notes: player.notes || null,
+  };
+
+  if (player.starRating !== undefined) row.star_rating = player.starRating;
+  if (player.starPoints !== undefined) row.star_points = player.starPoints;
+
+  return row;
+}
+
 export async function getPlayers() {
-  return (await loadAllData()).players;
+  return (await loadAllData()).players.map(normalizePlayer);
+}
+
+export async function createPlayer(_tournamentId, player, players = []) {
+  const savedPlayers = await savePlayersData([...players, player]);
+  return Array.isArray(savedPlayers)
+    ? savedPlayers.find((item) => item.name === player.name) || normalizePlayer(player)
+    : normalizePlayer(player);
+}
+
+export async function updatePlayer(playerId, updates, players = []) {
+  const nextPlayers = players.map((player) =>
+    player.id === playerId ? { ...player, ...updates, id: playerId } : player
+  );
+  return savePlayersData(nextPlayers);
 }
 
 export async function savePlayer(player, players = []) {

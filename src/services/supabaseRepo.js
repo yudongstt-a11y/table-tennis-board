@@ -23,6 +23,7 @@ import {
   tournamentControlFromDb,
   tournamentFromDb,
   tournamentToDb,
+  isUuid,
 } from "./supabaseMappers.js";
 import { officialDoublesPairs } from "../data/officialPlayers.js";
 
@@ -50,6 +51,11 @@ function stripGeneratedFields(payload) {
 function makeDiagnostics() {
   return {
     config: getSupabaseConfigStatus(),
+    lastFetchedAt: new Date().toISOString(),
+    tournament: {
+      slug: "",
+      id: "",
+    },
     tables: {},
   };
 }
@@ -60,6 +66,7 @@ async function loadTable(diagnostics, name, query) {
     diagnostics.tables[name] = {
       loaded: true,
       count: Array.isArray(data) ? data.length : data ? 1 : 0,
+      lastFetchedAt: new Date().toISOString(),
       error: "",
     };
     return data || [];
@@ -165,6 +172,10 @@ export async function loadAllData() {
   }
 
   const id = tournament.id;
+  diagnostics.tournament = {
+    slug: tournament.slug,
+    id,
+  };
 
   const [players, doublesPairs, stages, groups, matches, tableControls, timeline, breaks, seedings] = await Promise.all([
     loadTable(diagnostics, "players", supabase.from("players").select("*").eq("tournament_id", id).order("name")),
@@ -225,16 +236,34 @@ export async function saveTournamentControl(control, settings) {
 
 export async function savePlayers(players) {
   const id = await tournamentId();
-  const existing = await run(supabase.from("players").select("id,name").eq("tournament_id", id));
-  const nextNames = new Set(players.map((player) => player.name));
-  const deleteIds = existing.filter((player) => !nextNames.has(player.name)).map((player) => player.id);
+  const existing = await run(supabase.from("players").select("*").eq("tournament_id", id));
+  const existingById = new Map(existing.map((player) => [player.id, player]));
+  const existingByName = new Map(existing.map((player) => [String(player.name).trim().toLowerCase(), player]));
+  const nextIds = new Set(players.map((player) => player.id).filter(isUuid));
+  const nextNames = new Set(players.map((player) => String(player.name || "").trim().toLowerCase()).filter(Boolean));
+  const deleteIds = existing
+    .filter((player) => !nextIds.has(player.id) && !nextNames.has(String(player.name).trim().toLowerCase()))
+    .map((player) => player.id);
   if (deleteIds.length) await run(supabase.from("players").delete().in("id", deleteIds));
-  await run(
-    supabase
-      .from("players")
-      .upsert(players.map((player) => stripGeneratedFields(playerToDb(player, id))), { onConflict: "tournament_id,name" })
-      .select()
+
+  for (const player of players) {
+    const row = stripGeneratedFields(playerToDb(player, id));
+    const existingPlayer = row.id
+      ? existingById.get(row.id)
+      : existingByName.get(String(row.name || "").trim().toLowerCase());
+
+    if (existingPlayer) {
+      const { id: _discardedId, ...payload } = row;
+      await run(supabase.from("players").update(payload).eq("id", existingPlayer.id).select().single());
+    } else {
+      await run(supabase.from("players").insert(row).select().single());
+    }
+  }
+
+  const savedPlayers = await run(
+    supabase.from("players").select("*").eq("tournament_id", id).order("rating", { ascending: false, nullsFirst: false }).order("name")
   );
+  return savedPlayers.map(playerFromDb);
 }
 
 export async function importOfficialDoublesPairs(players) {
@@ -308,13 +337,33 @@ export async function saveBreaks(items) {
 
 export function subscribeToTournament(onChange) {
   if (!supabase || !currentTournament?.id) return () => {};
-  const channel = supabase
-    .channel(`tournament-${currentTournament.id}`)
-    .on(
+  const tournamentTables = [
+    "players",
+    "doubles_pairs",
+    "stages",
+    "groups",
+    "matches",
+    "table_controls",
+    "event_timeline_items",
+    "breaks",
+    "seedings",
+  ];
+  const channel = supabase.channel(`tournament-${currentTournament.id}`);
+
+  tournamentTables.forEach((table) => {
+    channel.on(
       "postgres_changes",
-      { event: "*", schema: "public", table: "matches", filter: `tournament_id=eq.${currentTournament.id}` },
+      { event: "*", schema: "public", table, filter: `tournament_id=eq.${currentTournament.id}` },
       onChange
-    )
-    .subscribe();
+    );
+  });
+
+  channel.on(
+    "postgres_changes",
+    { event: "*", schema: "public", table: "tournaments", filter: `id=eq.${currentTournament.id}` },
+    onChange
+  );
+
+  channel.subscribe();
   return () => supabase.removeChannel(channel);
 }

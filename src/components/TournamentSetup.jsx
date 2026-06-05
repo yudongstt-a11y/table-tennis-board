@@ -184,6 +184,18 @@ export default function TournamentSetup({
               <strong>Supabase anon key</strong>
               <span>{supabaseDiagnostics?.config?.anonKeyConfigured ? t("configured") : t("missing")}</span>
             </div>
+            <div>
+              <strong>Tournament slug</strong>
+              <span>{supabaseDiagnostics?.tournament?.slug || "-"}</span>
+            </div>
+            <div>
+              <strong>Tournament id</strong>
+              <span>{supabaseDiagnostics?.tournament?.id || "-"}</span>
+            </div>
+            <div>
+              <strong>Last fetch</strong>
+              <span>{supabaseDiagnostics?.lastFetchedAt || "-"}</span>
+            </div>
             {[
               "tournaments",
               "players",

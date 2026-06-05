@@ -224,9 +224,11 @@ export default function AdminDashboard({
     setStatusNotice(t("matchTimesRecalculated"));
   }
 
-  function handlePlayersChange(nextPlayers) {
-    onPlayersChange(nextPlayers);
-    onMatchesChange(syncMatchesWithPlayers(matches, nextPlayers));
+  async function handlePlayersChange(nextPlayers) {
+    const savedPlayers = await onPlayersChange(nextPlayers);
+    const playersForSync = Array.isArray(savedPlayers) ? savedPlayers : nextPlayers;
+    onMatchesChange(syncMatchesWithPlayers(matches, playersForSync));
+    return playersForSync;
   }
 
   function restoreDemoData() {
