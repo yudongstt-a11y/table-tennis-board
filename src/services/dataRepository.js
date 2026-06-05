@@ -48,6 +48,12 @@ export function importOfficialDoublesPairsData(players) {
     : localRepo.importOfficialDoublesPairsData(players);
 }
 
+export function saveDoublesPairsData(pairs, players = []) {
+  return isSupabaseMode()
+    ? supabaseRepo.saveDoublesPairs(pairs, players)
+    : localRepo.saveDoublesPairsData(pairs);
+}
+
 export function saveStagesData(stages) {
   return isSupabaseMode() ? supabaseRepo.saveStages(stages) : localRepo.saveStagesData(stages);
 }

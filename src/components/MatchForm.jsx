@@ -1,5 +1,6 @@
 import { CATEGORIES } from "../constants/categories.js";
 import { getMatchFormat, getMatchFormatLabel, getStageFormatLabel } from "../constants/matchFormats.js";
+import { buildDoublesPairEntries, pairDisplayName } from "../utils/grouping.js";
 import PlayerAutocomplete from "./PlayerAutocomplete.jsx";
 
 export const emptyMatch = {
@@ -35,8 +36,16 @@ export const emptyMatch = {
   isBye: false,
 };
 
-export default function MatchForm({ value, players, stages = [], tableNames = [], language, t, title, onChange, onCancel, onSubmit }) {
+export default function MatchForm({ value, players, doublesPairs = [], stages = [], tableNames = [], language, t, title, onChange, onCancel, onSubmit }) {
   const isDoubles = value.categoryId === "mixed_doubles";
+  const pairOptions = buildDoublesPairEntries(doublesPairs, players).map((pair) => ({
+    id: pair.id,
+    name: pairDisplayName(pair),
+    rating: pair.averageRating,
+    categories: ["mixed_doubles"],
+    playerAMembers: [pair.playerAName, pair.playerBName].filter(Boolean),
+    pair,
+  }));
 
   function updateField(field, nextValue) {
     onChange({ ...value, [field]: nextValue });
@@ -71,6 +80,7 @@ export default function MatchForm({ value, players, stages = [], tableNames = []
       [`${prefix}Id`]: player.id,
       [`${prefix}Name`]: player.name,
       [`${prefix}Rating`]: player.rating,
+      [`${prefix}Members`]: player.playerAMembers || [player.name],
     });
   }
 
@@ -81,6 +91,7 @@ export default function MatchForm({ value, players, stages = [], tableNames = []
       [`${prefix}Id`]: "",
       [`${prefix}Name`]: name,
       [`${prefix}Rating`]: null,
+      [`${prefix}Members`]: isDoubles ? name.split("/").map((item) => item.trim()).filter(Boolean) : [],
     });
   }
 
@@ -160,7 +171,7 @@ export default function MatchForm({ value, players, stages = [], tableNames = []
           <PlayerAutocomplete
             label={isDoubles ? t("pairA") : t("playerA")}
             value={value.playerAName}
-            players={players}
+            players={isDoubles ? pairOptions : players}
             language={language}
             t={t}
             onInputChange={(name) => typePlayer("A", name)}
@@ -171,7 +182,7 @@ export default function MatchForm({ value, players, stages = [], tableNames = []
           <PlayerAutocomplete
             label={isDoubles ? t("pairB") : t("playerB")}
             value={value.playerBName}
-            players={players}
+            players={isDoubles ? pairOptions : players}
             language={language}
             t={t}
             onInputChange={(name) => typePlayer("B", name)}

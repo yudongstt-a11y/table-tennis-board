@@ -2,6 +2,7 @@ import {
   getBreaks,
   getEventTimeline,
   getGroups,
+  getDoublesPairs,
   getMatches,
   getPlayers,
   getSeedings,
@@ -13,6 +14,7 @@ import {
   saveBreaks,
   saveEventTimeline,
   saveGroups,
+  saveDoublesPairs,
   saveMatches,
   savePlayers,
   saveSeedings,
@@ -34,6 +36,7 @@ export async function loadAllData() {
     eventTimeline: getEventTimeline(),
     seedings: getSeedings(),
     groups: getGroups(),
+    doublesPairs: getDoublesPairs(),
     dataSourceError: "",
   };
 }
@@ -56,6 +59,10 @@ export async function saveStagesData(stages) {
 
 export async function saveGroupsData(groups) {
   saveGroups(groups);
+}
+
+export async function saveDoublesPairsData(pairs) {
+  saveDoublesPairs(pairs);
 }
 
 export async function saveSeedingsData(seedings) {

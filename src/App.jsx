@@ -13,6 +13,7 @@ import {
   getEventTimeline,
   getSeedings,
   getGroups,
+  getDoublesPairs,
   saveMatches,
   savePlayers,
   saveStages,
@@ -23,6 +24,7 @@ import {
   saveEventTimeline,
   saveSeedings,
   saveGroups,
+  saveDoublesPairs,
 } from "./utils/storage.js";
 import {
   DATA_SOURCE,
@@ -31,6 +33,7 @@ import {
   saveBreaksData,
   saveEventTimelineData,
   saveGroupsData,
+  saveDoublesPairsData,
   saveMatchesData,
   savePlayersData,
   saveSeedingsData,
@@ -74,6 +77,7 @@ export default function App() {
   const [eventTimeline, setEventTimeline] = useState(() => getEventTimeline());
   const [seedings, setSeedings] = useState(() => getSeedings());
   const [groups, setGroups] = useState(() => getGroups());
+  const [doublesPairs, setDoublesPairs] = useState(() => getDoublesPairs());
   const [dataSourceError, setDataSourceError] = useState("");
   const [language, setLanguage] = useState(() => localStorage.getItem(LANGUAGE_KEY) || "zh");
   const [isLoggedIn, setIsLoggedIn] = useState(() => hasAdminSession());
@@ -229,6 +233,12 @@ export default function App() {
     saveGroupsData(nextGroups).catch((error) => setDataSourceError(error.message));
   }
 
+  function updateDoublesPairs(nextDoublesPairs) {
+    setDoublesPairs(nextDoublesPairs);
+    saveDoublesPairs(nextDoublesPairs);
+    saveDoublesPairsData(nextDoublesPairs, players).catch((error) => setDataSourceError(error.message));
+  }
+
   function updateTournamentState(nextMatches, nextTableControls) {
     updateMatches(nextMatches);
     updateTableControls(nextTableControls);
@@ -245,11 +255,15 @@ export default function App() {
     setEventTimeline(nextData.eventTimeline);
     setSeedings(nextData.seedings);
     setGroups(nextData.groups);
+    setDoublesPairs(nextData.doublesPairs || []);
     setDataSourceError(nextData.dataSourceError || "");
   }
 
   function importOfficialDoublesPairs(playersForImport) {
-    importOfficialDoublesPairsData(playersForImport).catch((error) => setDataSourceError(error.message));
+    importOfficialDoublesPairsData(playersForImport)
+      .then(() => loadAllData())
+      .then((nextData) => replaceAllData(nextData))
+      .catch((error) => setDataSourceError(error.message));
   }
 
   function handleLogin(username, password, rememberMe) {
@@ -343,6 +357,7 @@ export default function App() {
         dataSourceError={dataSourceError}
         seedings={seedings}
         groups={groups}
+        doublesPairs={doublesPairs}
         onLanguageChange={updateLanguage}
         onMatchesChange={updateMatches}
         onPlayersChange={updatePlayers}
@@ -354,6 +369,7 @@ export default function App() {
         onEventTimelineChange={updateEventTimeline}
         onSeedingsChange={updateSeedings}
         onGroupsChange={updateGroups}
+        onDoublesPairsChange={updateDoublesPairs}
         onTournamentStateChange={updateTournamentState}
         onReplaceAllData={replaceAllData}
         onOfficialDoublesImport={importOfficialDoublesPairs}
@@ -369,6 +385,7 @@ export default function App() {
       players={sortedPlayers}
       stages={stages}
       groups={groups}
+      doublesPairs={doublesPairs}
       tournamentSettings={tournamentSettings}
       eventTimeline={eventTimeline}
       dataSourceError={dataSourceError}

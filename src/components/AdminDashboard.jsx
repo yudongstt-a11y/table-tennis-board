@@ -69,6 +69,7 @@ export default function AdminDashboard({
   dataSourceError,
   seedings,
   groups,
+  doublesPairs,
   onLanguageChange,
   onMatchesChange,
   onPlayersChange,
@@ -80,6 +81,7 @@ export default function AdminDashboard({
   onEventTimelineChange,
   onSeedingsChange,
   onGroupsChange,
+  onDoublesPairsChange,
   onTournamentStateChange,
   onReplaceAllData,
   onOfficialDoublesImport,
@@ -366,6 +368,7 @@ export default function AdminDashboard({
         <AdminPlayersManager
           players={players}
           matches={matches}
+          dataSource={dataSource}
           language={language}
           t={t}
           onPlayersChange={handlePlayersChange}
@@ -385,12 +388,14 @@ export default function AdminDashboard({
           stages={stages}
           seedings={seedings}
           groups={groups}
+          doublesPairs={doublesPairs}
           matches={matches}
           tournamentSettings={tournamentSettings}
           language={language}
           t={t}
           onSeedingsChange={onSeedingsChange}
           onGroupsChange={onGroupsChange}
+          onDoublesPairsChange={onDoublesPairsChange}
           onMatchesChange={onMatchesChange}
         />
       ) : activeTab === "control" ? (
@@ -462,6 +467,7 @@ export default function AdminDashboard({
         <MatchForm
           value={draft}
           players={players}
+          doublesPairs={doublesPairs}
           stages={stages}
           language={language}
           t={t}

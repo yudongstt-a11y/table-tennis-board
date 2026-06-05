@@ -5,6 +5,7 @@ import { demoPlayers } from "../data/demoPlayers.js";
 import { demoStages } from "../data/demoStages.js";
 import { defaultEventTimeline, defaultTournamentSettings } from "../data/demoTournament.js";
 import { categoryIdFromLegacy } from "../constants/categories.js";
+import { officialDoublesPairs } from "../data/officialPlayers.js";
 
 const MATCHES_KEY = "table_tennis_schedule_matches";
 const PLAYERS_KEY = "table_tennis_schedule_players";
@@ -16,6 +17,7 @@ const TOURNAMENT_SETTINGS_KEY = "table_tennis_tournament_settings";
 const EVENT_TIMELINE_KEY = "table_tennis_event_timeline";
 const SEEDINGS_KEY = "table_tennis_seedings";
 const GROUPS_KEY = "table_tennis_groups";
+const DOUBLES_PAIRS_KEY = "table_tennis_doubles_pairs";
 
 function readArray(key, fallback) {
   try {
@@ -247,6 +249,26 @@ export function saveGroups(groups) {
   localStorage.setItem(GROUPS_KEY, JSON.stringify(groups));
 }
 
+function normalizeDoublesPair(pair, index = 0) {
+  return {
+    id: pair.id || `pair_${index}_${String(pair.playerAName || pair.playerA).replace(/\s+/g, "_")}`,
+    playerAName: pair.playerAName || pair.playerA || "",
+    playerBName: pair.playerBName || pair.playerB || "",
+    playerAId: pair.playerAId || "",
+    playerBId: pair.playerBId || "",
+    status: pair.status || "confirmed",
+    notes: pair.notes || "",
+  };
+}
+
+export function getDoublesPairs() {
+  return readArray(DOUBLES_PAIRS_KEY, officialDoublesPairs).map(normalizeDoublesPair);
+}
+
+export function saveDoublesPairs(pairs) {
+  localStorage.setItem(DOUBLES_PAIRS_KEY, JSON.stringify(pairs));
+}
+
 export function getMatches() {
   const stages = getStages();
   return readArray(MATCHES_KEY, demoMatches).map((match) => upgradeMatch(match, stages));
@@ -267,6 +289,7 @@ export function resetDemoData() {
   saveEventTimeline(defaultEventTimeline);
   saveSeedings([]);
   saveGroups([]);
+  saveDoublesPairs(officialDoublesPairs.map(normalizeDoublesPair));
   return {
     matches: getMatches(),
     players: getPlayers(),
@@ -278,6 +301,7 @@ export function resetDemoData() {
     eventTimeline: getEventTimeline(),
     seedings: getSeedings(),
     groups: getGroups(),
+    doublesPairs: getDoublesPairs(),
   };
 }
 

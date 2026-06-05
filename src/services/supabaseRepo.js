@@ -6,6 +6,7 @@ import {
   breakFromDb,
   breakToDb,
   doublesPairToDb,
+  doublesPairFromDb,
   groupFromDb,
   groupToDb,
   matchFromDb,
@@ -75,8 +76,9 @@ export async function loadAllData() {
   const tournament = await ensureTournament();
   const id = tournament.id;
 
-  const [players, stages, groups, matches, tableControls, timeline, breaks, seedings] = await Promise.all([
+  const [players, doublesPairs, stages, groups, matches, tableControls, timeline, breaks, seedings] = await Promise.all([
     run(supabase.from("players").select("*").eq("tournament_id", id).order("name")),
+    run(supabase.from("doubles_pairs").select("*").eq("tournament_id", id).order("player_a_name")),
     run(supabase.from("stages").select("*").eq("tournament_id", id).order("stage_order")),
     run(supabase.from("groups").select("*").eq("tournament_id", id).order("group_order")),
     run(supabase.from("matches").select("*").eq("tournament_id", id).order("scheduled_time")),
@@ -97,6 +99,7 @@ export async function loadAllData() {
   return {
     matches: matches.map(matchFromDb),
     players: players.map(playerFromDb),
+    doublesPairs: doublesPairs.map(doublesPairFromDb),
     stages: mappedStages,
     tableControls: controls,
     breaks: breaks.map(breakFromDb),
@@ -149,6 +152,14 @@ export async function importOfficialDoublesPairs(players) {
       .upsert(officialDoublesPairs.map((pair) => doublesPairToDb(pair, id, playerByName)), {
         onConflict: "tournament_id,player_a_name,player_b_name",
       })
+  );
+}
+
+export async function saveDoublesPairs(pairs, players = []) {
+  const id = await tournamentId();
+  const playerByName = new Map(players.map((player) => [player.name.toLowerCase(), player]));
+  await replaceRows("doubles_pairs", pairs, (pair, tournamentId) =>
+    doublesPairToDb(pair, tournamentId, playerByName)
   );
 }
 

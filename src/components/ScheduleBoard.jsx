@@ -27,6 +27,7 @@ export default function ScheduleBoard({
   players,
   stages,
   groups,
+  doublesPairs,
   tournamentSettings,
   eventTimeline,
   language,
@@ -186,6 +187,7 @@ export default function ScheduleBoard({
           groups={groups}
           matches={matches}
           players={players}
+          doublesPairs={doublesPairs}
           stages={stages}
           language={language}
           t={t}

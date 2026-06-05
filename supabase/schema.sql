@@ -93,6 +93,8 @@ create table if not exists public.groups (
   name text not null,
   group_order integer default 1,
   player_ids jsonb default '[]'::jsonb,
+  entry_type text default 'player' check (entry_type in ('player', 'pair')),
+  entry_ids jsonb default '[]'::jsonb,
   published boolean default true,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
@@ -119,9 +121,11 @@ create table if not exists public.matches (
   player_a_id uuid null references public.players(id) on delete set null,
   player_a_name text null,
   player_a_rating integer null,
+  player_a_members jsonb default '[]'::jsonb,
   player_b_id uuid null references public.players(id) on delete set null,
   player_b_name text null,
   player_b_rating integer null,
+  player_b_members jsonb default '[]'::jsonb,
   is_bye boolean default false,
   status text default 'Upcoming' check (status in ('Upcoming', 'Playing', 'Finished')),
   score text null,
@@ -140,6 +144,11 @@ create table if not exists public.matches (
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+alter table public.groups add column if not exists entry_type text default 'player';
+alter table public.groups add column if not exists entry_ids jsonb default '[]'::jsonb;
+alter table public.matches add column if not exists player_a_members jsonb default '[]'::jsonb;
+alter table public.matches add column if not exists player_b_members jsonb default '[]'::jsonb;
 
 create table if not exists public.table_controls (
   id uuid primary key default gen_random_uuid(),

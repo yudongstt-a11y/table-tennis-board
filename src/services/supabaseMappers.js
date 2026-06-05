@@ -124,6 +124,7 @@ export function stageToDb(stage, tournamentId) {
 }
 
 export function groupFromDb(row) {
+  const entryIds = Array.isArray(row.entry_ids) ? row.entry_ids : row.player_ids || [];
   return {
     id: row.id,
     eventId: row.event_id,
@@ -131,11 +132,15 @@ export function groupFromDb(row) {
     name: row.name,
     order: row.group_order || 1,
     playerIds: Array.isArray(row.player_ids) ? row.player_ids : [],
+    entryType: row.entry_type || "player",
+    entryIds,
     published: Boolean(row.published),
   };
 }
 
 export function groupToDb(group, tournamentId) {
+  const entryType = group.entryType || (group.eventId === "mixed_doubles" ? "pair" : "player");
+  const entryIds = group.entryIds || group.playerIds || [];
   return {
     ...withUuidId(group),
     tournament_id: tournamentId,
@@ -143,7 +148,9 @@ export function groupToDb(group, tournamentId) {
     stage_id: isUuid(group.stageId) ? group.stageId : null,
     name: group.name,
     group_order: Number(group.order) || 1,
-    player_ids: group.playerIds || [],
+    player_ids: entryType === "player" ? entryIds : group.playerIds || [],
+    entry_type: entryType,
+    entry_ids: entryIds,
     published: group.published !== false,
   };
 }
@@ -192,9 +199,11 @@ export function matchFromDb(row) {
     playerAId: row.player_a_id || "",
     playerAName: row.player_a_name || "",
     playerARating: row.player_a_rating,
+    playerAMembers: Array.isArray(row.player_a_members) ? row.player_a_members : [],
     playerBId: row.player_b_id || "",
     playerBName: row.player_b_name || "",
     playerBRating: row.player_b_rating,
+    playerBMembers: Array.isArray(row.player_b_members) ? row.player_b_members : [],
     isBye: Boolean(row.is_bye),
     status: row.status || "Upcoming",
     score: row.score || "",
@@ -235,9 +244,11 @@ export function matchToDb(match, tournamentId) {
     player_a_id: isUuid(match.playerAId) ? match.playerAId : null,
     player_a_name: match.playerAName || null,
     player_a_rating: match.playerARating ?? null,
+    player_a_members: match.playerAMembers || null,
     player_b_id: isUuid(match.playerBId) ? match.playerBId : null,
     player_b_name: match.playerBName || null,
     player_b_rating: match.playerBRating ?? null,
+    player_b_members: match.playerBMembers || null,
     is_bye: Boolean(match.isBye),
     status: match.status || "Upcoming",
     score: match.score || null,
@@ -329,11 +340,27 @@ export function breakToDb(item, tournamentId) {
 export function doublesPairToDb(pair, tournamentId, playerByName = new Map()) {
   return {
     tournament_id: tournamentId,
-    player_a_name: pair.playerA || pair.player_a_name,
-    player_b_name: pair.playerB || pair.player_b_name,
-    player_a_id: playerByName.get((pair.playerA || "").toLowerCase())?.id || null,
-    player_b_id: playerByName.get((pair.playerB || "").toLowerCase())?.id || null,
+    player_a_name: pair.playerA || pair.playerAName || pair.player_a_name,
+    player_b_name: pair.playerB || pair.playerBName || pair.player_b_name,
+    player_a_id: isUuid(playerByName.get((pair.playerA || pair.playerAName || "").toLowerCase())?.id)
+      ? playerByName.get((pair.playerA || pair.playerAName || "").toLowerCase()).id
+      : null,
+    player_b_id: isUuid(playerByName.get((pair.playerB || pair.playerBName || "").toLowerCase())?.id)
+      ? playerByName.get((pair.playerB || pair.playerBName || "").toLowerCase()).id
+      : null,
     status: pair.status || "confirmed",
     notes: pair.notes || null,
+  };
+}
+
+export function doublesPairFromDb(row) {
+  return {
+    id: row.id,
+    playerAName: row.player_a_name,
+    playerBName: row.player_b_name,
+    playerAId: row.player_a_id || "",
+    playerBId: row.player_b_id || "",
+    status: row.status || "confirmed",
+    notes: row.notes || "",
   };
 }

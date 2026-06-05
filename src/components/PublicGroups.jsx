@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { CATEGORIES, getCategoryLabel } from "../constants/categories.js";
+import { getCategoryLabel } from "../constants/categories.js";
 import { getStageFormatLabel } from "../constants/matchFormats.js";
+import { buildDoublesPairEntries, groupEntryIds, pairDisplayName } from "../utils/grouping.js";
 import { ratingLabel } from "./PlayerAutocomplete.jsx";
 
 const eventTabs = [
@@ -31,30 +32,40 @@ function roundLabel(round, totalRounds, t) {
   return `${t("round")} ${round}`;
 }
 
-function GroupCards({ groups, playerMap, language, t }) {
+function GroupCards({ groups, playerMap, pairMap, language, t }) {
   return (
     <div className="group-results-grid">
-      {groups.map((group) => (
-        <article className="group-card" key={group.id}>
-          <div className="group-card-header">
-            <h3>{group.name}</h3>
-            <span>{group.playerIds.length} {t("players")}</span>
-          </div>
-          <div className="group-player-list">
-            {group.playerIds.map((playerId, index) => {
-              const player = playerMap.get(playerId);
-              return (
-                <div className="group-player-row public-group-player" key={playerId}>
-                  <span>
-                    {index + 1}. {player?.name || playerId} ·{" "}
-                    {player ? ratingLabel(player.rating, t) : t("unrated")}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </article>
-      ))}
+      {groups.map((group) => {
+        const isPairGroup = group.entryType === "pair";
+        const entryIds = groupEntryIds(group);
+
+        return (
+          <article className="group-card" key={group.id}>
+            <div className="group-card-header">
+              <h3>{group.name}</h3>
+              <span>
+                {entryIds.length} {isPairGroup ? t("doublesPairsCount") : t("players")}
+              </span>
+            </div>
+            <div className="group-player-list">
+              {entryIds.map((entryId, index) => {
+                const entry = isPairGroup ? pairMap.get(entryId) : playerMap.get(entryId);
+                const line = isPairGroup
+                  ? `${entry ? pairDisplayName(entry) : entryId} · ${t("averageRating")} ${
+                      entry?.averageRating ?? t("unrated")
+                    }`
+                  : `${entry?.name || entryId} · ${entry ? ratingLabel(entry.rating, t) : t("unrated")}`;
+
+                return (
+                  <div className="group-player-row public-group-player" key={entryId}>
+                    <span>{index + 1}. {line}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </article>
+        );
+      })}
     </div>
   );
 }
@@ -109,9 +120,11 @@ function BracketRounds({ matches, t }) {
   );
 }
 
-export default function PublicGroups({ groups, matches, players, stages, language, t }) {
+export default function PublicGroups({ groups, matches, players, doublesPairs = [], stages, language, t }) {
   const [activeEventId, setActiveEventId] = useState("singles");
   const playerMap = useMemo(() => new Map(players.map((player) => [player.id, player])), [players]);
+  const pairEntries = useMemo(() => buildDoublesPairEntries(doublesPairs, players), [doublesPairs, players]);
+  const pairMap = useMemo(() => new Map(pairEntries.map((pair) => [pair.id, pair])), [pairEntries]);
   const publishedGroups = groups.filter((group) => group.published);
 
   const eventStages = useMemo(
@@ -173,7 +186,7 @@ export default function PublicGroups({ groups, matches, players, stages, languag
               <div className="empty-state compact-empty">{t("noStageData")}</div>
             ) : stage.format === "round_robin" ? (
               stageGroups.length ? (
-                <GroupCards groups={stageGroups} playerMap={playerMap} language={language} t={t} />
+                <GroupCards groups={stageGroups} playerMap={playerMap} pairMap={pairMap} language={language} t={t} />
               ) : (
                 <div className="empty-state compact-empty">{t("noStageData")}</div>
               )
@@ -192,7 +205,7 @@ export default function PublicGroups({ groups, matches, players, stages, languag
               <h2>{activeEventId === "mixed_doubles" ? t("doubles") : getCategoryLabel(activeEventId, language)}</h2>
             </div>
           </div>
-          <GroupCards groups={eventGroups} playerMap={playerMap} language={language} t={t} />
+          <GroupCards groups={eventGroups} playerMap={playerMap} pairMap={pairMap} language={language} t={t} />
         </section>
       )}
     </section>

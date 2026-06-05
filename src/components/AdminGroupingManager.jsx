@@ -3,9 +3,14 @@ import { CATEGORIES, getCategoryLabel } from "../constants/categories.js";
 import { getStageFormatLabel } from "../constants/matchFormats.js";
 import {
   averageRating,
+  averageEntryRating,
+  buildDoublesPairEntries,
   calculateGroupCount,
   createGroupMatches,
+  generateFairEntryGroups,
   generateFairGroups,
+  groupEntryIds,
+  pairDisplayName,
   sortPlayersForSeeding,
 } from "../utils/grouping.js";
 import { ratingLabel } from "./PlayerAutocomplete.jsx";
@@ -24,6 +29,7 @@ export default function AdminGroupingManager({
   seedings,
   groups,
   matches,
+  doublesPairs,
   tournamentSettings,
   language,
   t,
@@ -49,6 +55,12 @@ export default function AdminGroupingManager({
       }),
     [eventId, players]
   );
+  const isDoublesEvent = eventId === "mixed_doubles";
+  const pairEntries = useMemo(
+    () => buildDoublesPairEntries(doublesPairs || [], players),
+    [doublesPairs, players]
+  );
+  const eventEntries = isDoublesEvent ? pairEntries : eventPlayers;
 
   const eventStages = useMemo(
     () => stages.filter((stage) => stage.eventId === eventId),
@@ -72,14 +84,23 @@ export default function AdminGroupingManager({
   useEffect(() => {
     if (!selectedStage) return;
     const stored = seedings.find((item) => item.id === seedingId(eventId, selectedStage.id));
-    const defaultIds = sortPlayersForSeeding(eventPlayers).map((player) => player.id);
-    const validIds = stored?.playerIds?.filter((id) => eventPlayers.some((player) => player.id === id)) || [];
+    const defaultIds = isDoublesEvent
+      ? pairEntries.map((pair) => pair.id)
+      : sortPlayersForSeeding(eventPlayers).map((player) => player.id);
+    const validIds =
+      stored?.playerIds?.filter((id) => eventEntries.some((entry) => entry.id === id)) || [];
     const missingIds = defaultIds.filter((id) => !validIds.includes(id));
     setSeedPlayerIds([...validIds, ...missingIds]);
-    setDraftGroups(currentGroups.map((group) => ({ ...group, playerIds: [...group.playerIds] })));
-  }, [eventId, eventPlayers, selectedStage?.id]);
+    setDraftGroups(currentGroups.map((group) => ({
+      ...group,
+      entryType: group.entryType || (isDoublesEvent ? "pair" : "player"),
+      entryIds: [...groupEntryIds(group)],
+      playerIds: [...(group.playerIds || [])],
+    })));
+  }, [eventId, eventPlayers, eventEntries, isDoublesEvent, pairEntries, selectedStage?.id]);
 
-  const seededPlayers = seedPlayerIds.map((id) => playersById.get(id)).filter(Boolean);
+  const entriesById = useMemo(() => new Map(eventEntries.map((entry) => [entry.id, entry])), [eventEntries]);
+  const seededPlayers = seedPlayerIds.map((id) => entriesById.get(id)).filter(Boolean);
   const resolvedGroupCount = calculateGroupCount(seedPlayerIds.length, groupSize, groupCount);
 
   function moveSeed(index, direction) {
@@ -91,7 +112,11 @@ export default function AdminGroupingManager({
   }
 
   function autoSortSeeds() {
-    setSeedPlayerIds(sortPlayersForSeeding(eventPlayers).map((player) => player.id));
+    setSeedPlayerIds(
+      isDoublesEvent
+        ? pairEntries.map((pair) => pair.id)
+        : sortPlayersForSeeding(eventPlayers).map((player) => player.id)
+    );
     setNotice(t("unratedAtEnd"));
   }
 
@@ -111,15 +136,25 @@ export default function AdminGroupingManager({
 
   function generateGroups() {
     if (!selectedStage) return;
-    const nextGroups = generateFairGroups({
-      seedPlayerIds,
-      groupCount: resolvedGroupCount,
-      groupSize,
-    }).map((group) => ({
+    const generated = isDoublesEvent
+      ? generateFairEntryGroups({
+          seedEntryIds: seedPlayerIds,
+          groupCount: resolvedGroupCount,
+          groupSize,
+          entryType: "pair",
+        })
+      : generateFairGroups({
+          seedPlayerIds,
+          groupCount: resolvedGroupCount,
+          groupSize,
+        });
+    const nextGroups = generated.map((group) => ({
       ...group,
       id: groupStorageId(eventId, selectedStage.id, group.order),
       eventId,
       stageId: selectedStage.id,
+      entryType: isDoublesEvent ? "pair" : "player",
+      entryIds: groupEntryIds(group),
       published: false,
     }));
     setDraftGroups(nextGroups);
@@ -129,11 +164,20 @@ export default function AdminGroupingManager({
   function movePlayerToGroup(playerId, targetGroupId) {
     setDraftGroups((currentGroups) =>
       currentGroups.map((group) => {
-        const withoutPlayer = group.playerIds.filter((id) => id !== playerId);
+        const ids = groupEntryIds(group);
+        const withoutPlayer = ids.filter((id) => id !== playerId);
         if (group.id === targetGroupId) {
-          return { ...group, playerIds: [...withoutPlayer, playerId] };
+          return {
+            ...group,
+            entryIds: [...withoutPlayer, playerId],
+            playerIds: group.entryType === "pair" ? [] : [...withoutPlayer, playerId],
+          };
         }
-        return { ...group, playerIds: withoutPlayer };
+        return {
+          ...group,
+          entryIds: withoutPlayer,
+          playerIds: group.entryType === "pair" ? [] : withoutPlayer,
+        };
       })
     );
   }
@@ -142,7 +186,8 @@ export default function AdminGroupingManager({
     setDraftGroups((currentGroups) =>
       currentGroups.map((group) => ({
         ...group,
-        playerIds: group.playerIds.filter((id) => id !== playerId),
+        entryIds: groupEntryIds(group).filter((id) => id !== playerId),
+        playerIds: group.entryType === "pair" ? [] : group.playerIds.filter((id) => id !== playerId),
       }))
     );
   }
@@ -286,6 +331,7 @@ export default function AdminGroupingManager({
           const rawMatches = createGroupMatches({
             groups: groupsForStage(stage.id),
             playersById,
+            entriesById: stage.eventId === "mixed_doubles" ? new Map(pairEntries.map((pair) => [pair.id, pair])) : playersById,
             stage,
             eventId: stage.eventId,
           }).map((match) => ({ ...match, stageOrder: order }));
@@ -309,8 +355,11 @@ export default function AdminGroupingManager({
     setNotice(t("matchesGenerated"));
   }
 
-  const assignedIds = new Set(draftGroups.flatMap((group) => group.playerIds));
+  const assignedIds = new Set(draftGroups.flatMap((group) => groupEntryIds(group)));
   const unassignedPlayers = seededPlayers.filter((player) => !assignedIds.has(player.id));
+  const entryCountLabel = isDoublesEvent
+    ? `${pairEntries.length} ${t("doublesPairsCount")}`
+    : `${eventPlayers.length} ${t("players")}`;
 
   return (
     <section className="admin-panel grouping-panel">
@@ -330,7 +379,7 @@ export default function AdminGroupingManager({
               </button>
             ))}
           </div>
-          <p className="subtle">{eventPlayers.length} {t("players")}</p>
+          <p className="subtle">{entryCountLabel}</p>
         </section>
 
         <section className="workflow-card">
@@ -356,14 +405,16 @@ export default function AdminGroupingManager({
         <div className="section-title-row">
           <div>
             <p className="eyebrow">Step 3</p>
-            <h2>{t("seedingOrder")}</h2>
-            <p className="subtle">{t("seedingOrderHelp")}</p>
+            <h2>{isDoublesEvent ? t("pairSeedingOrder") : t("seedingOrder")}</h2>
+            <p className="subtle">
+              {isDoublesEvent ? t("confirmedDoublesOnly") : t("seedingOrderHelp")}
+            </p>
           </div>
           <div className="row-actions">
             <button className="ghost-button" type="button" onClick={autoSortSeeds}>
               {t("autoSortByRating")}
             </button>
-            <button className="ghost-button" type="button" onClick={() => setSeedPlayerIds(sortPlayersForSeeding(eventPlayers).map((player) => player.id))}>
+            <button className="ghost-button" type="button" onClick={autoSortSeeds}>
               {t("resetOrder")}
             </button>
             <button className="primary-button" type="button" onClick={saveSeeding}>
@@ -373,17 +424,31 @@ export default function AdminGroupingManager({
         </div>
 
         <div className="seed-list">
-          {seededPlayers.map((player, index) => (
-            <article className="seed-row" key={player.id}>
+          {seededPlayers.map((entry, index) => (
+            <article className="seed-row" key={entry.id}>
               <strong className="seed-rank">#{index + 1}</strong>
               <div className="seed-player-main">
-                <b>{player.name}</b>
-                <p>{player.gender} · {ratingLabel(player.rating, t)}</p>
-                <div className="category-pills">
-                  {player.categories.map((id) => (
-                    <span key={id}>{getCategoryLabel(id, language)}</span>
-                  ))}
-                </div>
+                <b>{isDoublesEvent ? pairDisplayName(entry) : entry.name}</b>
+                {isDoublesEvent ? (
+                  <>
+                    <p>
+                      {t("rating")}: {entry.playerARating ?? t("unrated")} /{" "}
+                      {entry.playerBRating ?? t("unrated")}
+                    </p>
+                    <p>
+                      {t("averageRating")}: {entry.averageRating ?? t("unrated")}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p>{entry.gender} · {ratingLabel(entry.rating, t)}</p>
+                    <div className="category-pills">
+                      {entry.categories.map((id) => (
+                        <span key={id}>{getCategoryLabel(id, language)}</span>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
               <div className="seed-actions">
                 <button
@@ -434,7 +499,7 @@ export default function AdminGroupingManager({
             />
           </label>
           <div className="form-hint">
-            {t("autoCalculateGroups")}: {resolvedGroupCount} 路 {t("autoCalculateGroupSize")}
+            {t("autoCalculateGroups")}: {resolvedGroupCount} · {t("autoCalculateGroupSize")}
           </div>
           <button className="primary-button" type="button" onClick={generateGroups}>
             {t("generateGroups")}
@@ -469,19 +534,30 @@ export default function AdminGroupingManager({
               <article className="group-card" key={group.id}>
                 <div className="group-card-header">
                   <h3>{group.name}</h3>
-                  <span>{group.playerIds.length} {t("players")}</span>
+                  <span>
+                    {groupEntryIds(group).length}{" "}
+                    {group.entryType === "pair" ? t("doublesPairsCount") : t("players")}
+                  </span>
                 </div>
                 <p className="subtle">
-                  {t("averageRating")}: {averageRating(group.playerIds, playersById) ?? t("unrated")}
+                  {t("averageRating")}:{" "}
+                  {group.entryType === "pair"
+                    ? averageEntryRating(groupEntryIds(group), entriesById) ?? t("unrated")
+                    : averageRating(group.playerIds, playersById) ?? t("unrated")}
                 </p>
                 <div className="group-player-list">
-                  {group.playerIds.map((playerId, index) => {
-                    const player = playersById.get(playerId);
+                  {groupEntryIds(group).map((playerId, index) => {
+                    const player = group.entryType === "pair" ? entriesById.get(playerId) : playersById.get(playerId);
                     if (!player) return null;
 
                     return (
                       <div className="group-player-row" key={playerId}>
-                        <span>{index + 1}. {player.name} 路 {ratingLabel(player.rating, t)}</span>
+                        <span>
+                          {index + 1}.{" "}
+                          {group.entryType === "pair"
+                            ? `${pairDisplayName(player)} · ${t("averageRating")} ${player.averageRating ?? t("unrated")}`
+                            : `${player.name} · ${ratingLabel(player.rating, t)}`}
+                        </span>
                         <select value={group.id} onChange={(event) => movePlayerToGroup(playerId, event.target.value)}>
                           {draftGroups.map((targetGroup) => (
                             <option key={targetGroup.id} value={targetGroup.id}>
@@ -505,7 +581,11 @@ export default function AdminGroupingManager({
               <h3>{t("unassigned")}</h3>
               {unassignedPlayers.map((player) => (
                 <div className="group-player-row" key={player.id}>
-                  <span>{player.name} 路 {ratingLabel(player.rating, t)}</span>
+                  <span>
+                    {isDoublesEvent
+                      ? `${pairDisplayName(player)} · ${t("averageRating")} ${player.averageRating ?? t("unrated")}`
+                      : `${player.name} · ${ratingLabel(player.rating, t)}`}
+                  </span>
                   <select defaultValue="" onChange={(event) => movePlayerToGroup(player.id, event.target.value)}>
                     <option value="" disabled>{t("moveTo")}</option>
                     {draftGroups.map((group) => (
