@@ -165,13 +165,14 @@ export default function AdminStagesManager({ stages, language, t, onStagesChange
                 </select>
               </label>
               <label>
-                <span>{t("order")}</span>
+                <span>{t("stageOrder")}</span>
                 <input
                   type="number"
                   min="1"
                   value={draft.order}
                   onChange={(event) => updateDraft("order", event.target.value)}
                 />
+                <small className="field-help">{t("stageOrderHelp")}</small>
               </label>
               <div className="form-hint">
                 {t("winner")}: {getMatchFormat(draft.matchFormat).winnerGames} ·{" "}

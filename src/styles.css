@@ -823,6 +823,13 @@ h2 {
   font-weight: 800;
 }
 
+.field-help {
+  color: #607086;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .form-warning {
   grid-column: 1 / -1;
   border-radius: 8px;
