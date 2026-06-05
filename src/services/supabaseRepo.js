@@ -39,6 +39,14 @@ async function run(query) {
   return data;
 }
 
+function stripGeneratedFields(payload) {
+  const copy = { ...payload };
+  if (!copy.id) delete copy.id;
+  delete copy.created_at;
+  delete copy.updated_at;
+  return copy;
+}
+
 function makeDiagnostics() {
   return {
     config: getSupabaseConfigStatus(),
@@ -93,7 +101,7 @@ async function replaceRows(table, rows, mapper, orderColumn = null) {
   const id = await tournamentId();
   await run(supabase.from(table).delete().eq("tournament_id", id));
   if (!rows.length) return [];
-  const query = supabase.from(table).insert(rows.map((row) => mapper(row, id))).select();
+  const query = supabase.from(table).insert(rows.map((row) => stripGeneratedFields(mapper(row, id)))).select();
   const data = await run(query);
   return orderColumn ? data.sort((a, b) => (a[orderColumn] || 0) - (b[orderColumn] || 0)) : data;
 }
@@ -101,7 +109,7 @@ async function replaceRows(table, rows, mapper, orderColumn = null) {
 async function safeReplaceRows(table, rows, mapper, orderColumn = null, fallbackColumns = []) {
   const id = await tournamentId();
   const existing = await run(supabase.from(table).select("id").eq("tournament_id", id));
-  const mappedRows = rows.map((row) => mapper(row, id));
+  const mappedRows = rows.map((row) => stripGeneratedFields(mapper(row, id)));
   const retainedIds = new Set(mappedRows.map((row) => row.id).filter(Boolean));
   let data = [];
   let fallbackError = null;
@@ -224,7 +232,7 @@ export async function savePlayers(players) {
   await run(
     supabase
       .from("players")
-      .upsert(players.map((player) => playerToDb(player, id)), { onConflict: "tournament_id,name" })
+      .upsert(players.map((player) => stripGeneratedFields(playerToDb(player, id))), { onConflict: "tournament_id,name" })
       .select()
   );
 }
@@ -238,7 +246,7 @@ export async function importOfficialDoublesPairs(players) {
 
   await Promise.all(
     officialDoublesPairs.map((pair) => {
-      const row = doublesPairToDb(pair, id, playerByName);
+      const row = stripGeneratedFields(doublesPairToDb(pair, id, playerByName));
       const existing = existingByKey.get(pairKey(row));
       return existing
         ? run(supabase.from("doubles_pairs").update(row).eq("id", existing.id))
@@ -280,7 +288,7 @@ export async function saveMatches(matches) {
 export async function saveTableControls(tableControls) {
   const id = await tournamentId();
   const rows = Object.entries(tableControls).map(([table, control]) =>
-    tableControlToDb(table, control, id)
+    stripGeneratedFields(tableControlToDb(table, control, id))
   );
   if (rows.length) {
     await run(

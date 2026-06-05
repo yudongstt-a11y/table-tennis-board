@@ -78,6 +78,9 @@ create table if not exists public.stages (
 alter table public.stages
   add column if not exists next_stage_config jsonb default '{}'::jsonb;
 
+alter table public.stages
+  alter column id set default gen_random_uuid();
+
 create table if not exists public.seedings (
   id uuid primary key default gen_random_uuid(),
   tournament_id uuid references public.tournaments(id) on delete cascade,
