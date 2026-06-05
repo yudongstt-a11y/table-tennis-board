@@ -7,6 +7,7 @@ import {
   doublesEntryDisplayName,
 } from "../utils/doublesEntries.js";
 import { compareMatchesBySchedule } from "../utils/matchSchedule.js";
+import { calculateGroupStandings } from "../utils/standings.js";
 import { ratingLabel } from "./PlayerAutocomplete.jsx";
 
 const eventTabs = [
@@ -37,7 +38,44 @@ function roundLabel(round, totalRounds, t) {
   return `${t("round")} ${round}`;
 }
 
-function GroupCards({ groups, playerMap, pairMap, language, t }) {
+function StandingsTable({ standings, t }) {
+  return (
+    <div className="standings-table-wrap">
+      <h4>{t("groupStandings")}</h4>
+      <table className="standings-table">
+        <thead>
+          <tr>
+            <th>{t("rank")}</th>
+            <th>{t("player")}</th>
+            <th>{t("winsShort")}</th>
+            <th>{t("lossesShort")}</th>
+            <th>{t("gamesForShort")}</th>
+            <th>{t("gamesAgainstShort")}</th>
+            <th>{t("gameDifferenceShort")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {standings.map((row) => (
+            <tr key={row.entryId}>
+              <td>{row.rank}</td>
+              <td>
+                {row.name}
+                {row.needsManualConfirmation && <span className="manual-rank-note"> · {t("rankingNeedsManualConfirmation")}</span>}
+              </td>
+              <td>{row.wins}</td>
+              <td>{row.losses}</td>
+              <td>{row.gamesFor}</td>
+              <td>{row.gamesAgainst}</td>
+              <td>{row.gameDifference}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function GroupCards({ groups, playerMap, pairMap, matches, language, t }) {
   return (
     <div className="group-results-grid">
       {groups.map((group) => {
@@ -68,6 +106,15 @@ function GroupCards({ groups, playerMap, pairMap, language, t }) {
                 );
               })}
             </div>
+            <StandingsTable
+              standings={calculateGroupStandings({
+                group,
+                matches,
+                players: isPairGroup ? Array.from(pairMap.values()) : Array.from(playerMap.values()),
+                seedOrder: entryIds,
+              })}
+              t={t}
+            />
           </article>
         );
       })}
@@ -191,7 +238,7 @@ export default function PublicGroups({ groups, matches, players, doublesPairs = 
               <div className="empty-state compact-empty">{t("noStageData")}</div>
             ) : stage.format === "round_robin" ? (
               stageGroups.length ? (
-                <GroupCards groups={stageGroups} playerMap={playerMap} pairMap={pairMap} language={language} t={t} />
+                <GroupCards groups={stageGroups} playerMap={playerMap} pairMap={pairMap} matches={stageMatches} language={language} t={t} />
               ) : (
                 <div className="empty-state compact-empty">{t("noStageData")}</div>
               )
@@ -210,7 +257,7 @@ export default function PublicGroups({ groups, matches, players, doublesPairs = 
               <h2>{activeEventId === "mixed_doubles" ? t("doubles") : getCategoryLabel(activeEventId, language)}</h2>
             </div>
           </div>
-          <GroupCards groups={eventGroups} playerMap={playerMap} pairMap={pairMap} language={language} t={t} />
+          <GroupCards groups={eventGroups} playerMap={playerMap} pairMap={pairMap} matches={eventMatches} language={language} t={t} />
         </section>
       )}
     </section>

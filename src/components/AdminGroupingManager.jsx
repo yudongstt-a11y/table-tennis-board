@@ -19,6 +19,11 @@ import {
 } from "../utils/doublesEntries.js";
 import { generateKnockoutMatches } from "../utils/knockoutBracket.js";
 import { brisbaneDateTimeToIso, getMatchDurationMinutes } from "../utils/matchSchedule.js";
+import {
+  calculateGroupStandings,
+  generateDivisionEntriesFromGroupStandings,
+  getStageDivision,
+} from "../utils/standings.js";
 import { ratingLabel } from "./PlayerAutocomplete.jsx";
 
 function seedingId(eventId, stageId) {
@@ -27,6 +32,14 @@ function seedingId(eventId, stageId) {
 
 function groupStorageId(eventId, stageId, order) {
   return `group_${eventId}_${stageId}_${order}`;
+}
+
+function stageHint(stage, t) {
+  if (!stage) return "";
+  if (stage.format === "round_robin") return t("roundRobinStageHelp");
+  if (stage.format === "knockout") return t("knockoutStageNoGroupingHelp");
+  if (stage.format === "placement") return t("placementStageNoGroupingHelp");
+  return "";
 }
 
 export default function AdminGroupingManager({
@@ -376,6 +389,96 @@ export default function AdminGroupingManager({
     setNotice(t("matchesGenerated"));
   }
 
+  function generateDivisionBrackets() {
+    if (eventId !== "singles" || selectedStage?.format !== "knockout") return;
+    if (!window.confirm(t("generateDivisionBracketsConfirm"))) return;
+
+    const roundRobinStages = stages.filter((stage) => stage.eventId === "singles" && stage.format === "round_robin");
+    const roundRobinStageIds = new Set(roundRobinStages.map((stage) => stage.id));
+    const sourceGroups = groups.filter((group) => group.eventId === "singles" && roundRobinStageIds.has(group.stageId));
+    const singlesSeedOrder =
+      seedings.find((item) => item.eventId === "singles" && roundRobinStageIds.has(item.stageId))?.playerIds ||
+      sortPlayersForSeeding(players.filter((player) => player.categories.includes("singles"))).map((player) => player.id);
+    const divisions = generateDivisionEntriesFromGroupStandings({
+      groups: sourceGroups,
+      matches,
+      players,
+      targetEventId: "singles",
+      seedOrder: singlesSeedOrder,
+    });
+    const divisionStages = stages.filter((stage) => stage.eventId === "singles" && stage.format === "knockout" && getStageDivision(stage));
+    const targetStageIds = new Set(divisionStages.map((stage) => stage.id));
+    const retainedMatches = matches.filter((match) => !targetStageIds.has(match.stageId));
+    const seedRank = new Map(singlesSeedOrder.map((id, index) => [id, index + 1]));
+    const generatedMatches = [];
+
+    divisionStages.forEach((stage) => {
+      const division = getStageDivision(stage);
+      const entries = [...(divisions[`division${division}`] || [])].sort(
+        (a, b) => (seedRank.get(a.id) || 9999) - (seedRank.get(b.id) || 9999)
+      );
+      if (!entries.length) return;
+      generatedMatches.push(
+        ...generateKnockoutMatches({
+          entries,
+          stage,
+          tournamentId: tournamentSettings.id,
+        })
+      );
+    });
+
+    onMatchesChange([...retainedMatches, ...generatedMatches]);
+    setNotice(t("matchesGenerated"));
+  }
+
+  function renderStandingsTable(group) {
+    const isPairGroup = group.entryType === "pair";
+    const entries = isPairGroup ? Array.from(entriesById.values()) : players;
+    const standings = calculateGroupStandings({
+      group,
+      matches,
+      players: entries,
+      seedOrder: groupEntryIds(group),
+    });
+
+    return (
+      <div className="standings-table-wrap">
+        <h4>{t("groupStandings")}</h4>
+        <table className="standings-table">
+          <thead>
+            <tr>
+              <th>{t("rank")}</th>
+              <th>{t("player")}</th>
+              <th>{t("playedShort")}</th>
+              <th>{t("winsShort")}</th>
+              <th>{t("lossesShort")}</th>
+              <th>{t("gamesForShort")}</th>
+              <th>{t("gamesAgainstShort")}</th>
+              <th>{t("gameDifferenceShort")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {standings.map((row) => (
+              <tr key={row.entryId}>
+                <td>{row.rank}</td>
+                <td>
+                  {row.name}
+                  {row.needsManualConfirmation && <span className="manual-rank-note"> · {t("rankingNeedsManualConfirmation")}</span>}
+                </td>
+                <td>{row.played}</td>
+                <td>{row.wins}</td>
+                <td>{row.losses}</td>
+                <td>{row.gamesFor}</td>
+                <td>{row.gamesAgainst}</td>
+                <td>{row.gameDifference}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
   const assignedIds = new Set(draftGroups.flatMap((group) => groupEntryIds(group)));
   const unassignedPlayers = seededPlayers.filter((player) => !assignedIds.has(player.id));
   const entryCountLabel = isDoublesEvent
@@ -421,7 +524,8 @@ export default function AdminGroupingManager({
           {selectedStage && (
             <p className="subtle">
               {getStageFormatLabel(selectedStage.format, language)}
-              {selectedStage.format !== "round_robin" ? ` 路 ${t("roundRobinGroupingHint")}` : ""}
+              {" · "}
+              {stageHint(selectedStage, t)}
             </p>
           )}
         </section>
@@ -449,6 +553,11 @@ export default function AdminGroupingManager({
             {selectedStage?.format === "knockout" && (
               <button className="primary-button" type="button" onClick={generateKnockoutBracket}>
                 {t("generateKnockoutBracket")}
+              </button>
+            )}
+            {eventId === "singles" && selectedStage?.format === "knockout" && (
+              <button className="ghost-button" type="button" onClick={generateDivisionBrackets}>
+                {t("generateDivisionBrackets")}
               </button>
             )}
           </div>
@@ -499,43 +608,51 @@ export default function AdminGroupingManager({
         </div>
       </section>
 
-      <section className="workflow-card">
-        <p className="eyebrow">Step 4</p>
-        <h2>{t("groupingSettings")}</h2>
-        <div className="group-settings">
-          <label>
-            <span>{t("playersPerGroup")}</span>
-            <input
-              min="2"
-              type="number"
-              value={groupSize}
-              onChange={(event) => {
-                setGroupSize(event.target.value);
-                setGroupCount("");
-              }}
-            />
-          </label>
-          <label>
-            <span>{t("numberOfGroups")}</span>
-            <input
-              min="1"
-              type="number"
-              value={groupCount}
-              onChange={(event) => setGroupCount(event.target.value)}
-            />
-          </label>
-          <div className="form-hint">
-            {t("autoCalculateGroups")}: {resolvedGroupCount} · {t("autoCalculateGroupSize")}
+      {selectedStage?.format === "round_robin" ? (
+        <section className="workflow-card">
+          <p className="eyebrow">Step 4</p>
+          <h2>{t("groupingSettings")}</h2>
+          <div className="group-settings">
+            <label>
+              <span>{t("playersPerGroup")}</span>
+              <input
+                min="2"
+                type="number"
+                value={groupSize}
+                onChange={(event) => {
+                  setGroupSize(event.target.value);
+                  setGroupCount("");
+                }}
+              />
+            </label>
+            <label>
+              <span>{t("numberOfGroups")}</span>
+              <input
+                min="1"
+                type="number"
+                value={groupCount}
+                onChange={(event) => setGroupCount(event.target.value)}
+              />
+            </label>
+            <div className="form-hint">
+              {t("autoCalculateGroups")}: {resolvedGroupCount} · {t("autoCalculateGroupSize")}
+            </div>
+            <button className="primary-button" type="button" onClick={generateGroups}>
+              {t("generateGroups")}
+            </button>
           </div>
-          <button className="primary-button" type="button" onClick={generateGroups}>
-            {t("generateGroups")}
-          </button>
-        </div>
-      </section>
+        </section>
+      ) : (
+        <section className="workflow-card">
+          <p className="eyebrow">Step 4</p>
+          <h2>{selectedStage?.format === "placement" ? t("generatePlacementBracket") : t("knockoutBracket")}</h2>
+          <p className="subtle">{stageHint(selectedStage, t)}</p>
+        </section>
+      )}
 
       {notice && <div className="status-notice">{notice}</div>}
 
-      {draftGroups.length > 0 && (
+      {selectedStage?.format === "round_robin" && draftGroups.length > 0 && (
         <section className="workflow-card">
           <div className="section-title-row">
             <div>
@@ -551,6 +668,9 @@ export default function AdminGroupingManager({
               </button>
               <button className="ghost-button" type="button" onClick={openGenerateMatches}>
                 {t("generateGroupMatches")}
+              </button>
+              <button className="ghost-button" type="button" onClick={() => setNotice(t("standingsRefreshed"))}>
+                {t("refreshStandings")}
               </button>
             </div>
           </div>
@@ -598,6 +718,7 @@ export default function AdminGroupingManager({
                     );
                   })}
                 </div>
+                {renderStandingsTable(group)}
               </article>
             ))}
           </div>

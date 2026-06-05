@@ -104,6 +104,7 @@ export function stageFromDb(row) {
     defaultMatchMinutes: row.default_minutes,
     order: row.stage_order || 1,
     tableAllocation: row.table_allocation || 1,
+    division: row.division || null,
   };
 }
 
