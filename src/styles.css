@@ -234,6 +234,7 @@ h2 {
 .list-tools select,
 .admin-form input,
 .match-form input,
+.match-form textarea,
 .match-form select,
 .admin-inline-controls input,
 .admin-inline-controls select {
@@ -253,6 +254,7 @@ h2 {
 .list-tools select:focus,
 .admin-form input:focus,
 .match-form input:focus,
+.match-form textarea:focus,
 .match-form select:focus,
 .admin-inline-controls input:focus,
 .admin-inline-controls select:focus {
@@ -1243,6 +1245,25 @@ h2 {
   box-shadow: 0 0 0 3px rgba(23, 92, 211, 0.1);
 }
 
+.player-extra-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.player-extra-info span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border-radius: 7px;
+  padding: 0 8px;
+  color: #44566f;
+  background: #f3f7fb;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .player-select-checkbox {
   display: flex;
   align-items: center;
@@ -1528,6 +1549,31 @@ h2 {
 .category-checkboxes input {
   width: 16px;
   min-height: 16px;
+}
+
+.form-checkbox-row {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  color: #172033;
+}
+
+.form-checkbox-row input {
+  width: 22px;
+  height: 22px;
+  min-height: 22px;
+  accent-color: #175cd3;
+}
+
+.wide-field {
+  grid-column: 1 / -1;
+}
+
+.match-form textarea {
+  min-height: 88px;
+  padding: 10px 12px;
+  resize: vertical;
 }
 
 .match-form .form-actions {

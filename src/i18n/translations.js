@@ -202,6 +202,13 @@ export const translations = {
     unratedAtEnd: "无 Rating 选手已排在后面。",
     groupsSaved: "分组已保存",
     matchesGenerated: "比赛已生成",
+    importOfficialEntries: "导入正式报名名单",
+    confirmImportOfficialEntries: "确定要导入正式报名名单吗？同名选手将被更新。",
+    officialImportComplete: "导入完成：{players} 名选手，{doubles} 组已确认双打组合，{needs} 名选手需要双打搭档。",
+    doublesPartner: "双打搭档",
+    needsDoublesPartner: "需要双打搭档",
+    ratingNote: "Rating 备注",
+    notes: "备注",
   },
   en: {
     appTitle: "Magnolia Cup Table Tennis Schedule Board",
@@ -406,6 +413,13 @@ export const translations = {
     unratedAtEnd: "Unrated players are placed at the end.",
     groupsSaved: "Groups saved",
     matchesGenerated: "Matches generated",
+    importOfficialEntries: "Import official entries",
+    confirmImportOfficialEntries: "Import official entries? Existing players with the same name will be updated.",
+    officialImportComplete: "Import complete: {players} players, {doubles} confirmed doubles pairs, {needs} players need a doubles partner.",
+    doublesPartner: "Doubles partner",
+    needsDoublesPartner: "Needs doubles partner",
+    ratingNote: "Rating note",
+    notes: "Notes",
   },
 };
 

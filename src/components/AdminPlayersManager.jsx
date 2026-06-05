@@ -1,10 +1,39 @@
 import { useMemo, useState } from "react";
 import { CATEGORIES, getCategoryLabel } from "../constants/categories.js";
+import {
+  officialDoublesPairs,
+  officialPlayers,
+  playersNeedDoublesPartner,
+} from "../data/officialPlayers.js";
 import PlayerForm, { emptyPlayer } from "./PlayerForm.jsx";
 import { ratingLabel } from "./PlayerAutocomplete.jsx";
 
 function normalize(value) {
   return String(value).trim().toLowerCase();
+}
+
+function slugifyName(name) {
+  return (
+    normalize(name)
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "") || "player"
+  );
+}
+
+function prepareOfficialPlayer(entry, existingPlayer = null, index = 0) {
+  return {
+    ...existingPlayer,
+    ...entry,
+    id: existingPlayer?.id || `p_${slugifyName(entry.name)}_${Date.now()}_${index}`,
+    name: entry.name.trim(),
+    gender: entry.gender || "Other",
+    rating: typeof entry.rating === "number" ? entry.rating : null,
+    ratingNote: entry.ratingNote || "",
+    categories: Array.from(new Set(entry.categories || [])),
+    doublesPartner: entry.doublesPartner || "",
+    needsDoublesPartner: Boolean(entry.needsDoublesPartner),
+    notes: entry.notes || "",
+  };
 }
 
 function defaultBulkDraft(action) {
@@ -74,6 +103,10 @@ export default function AdminPlayersManager({ players, matches, language, t, onP
       ...player,
       rating: player.rating ?? "",
       categories: [...player.categories],
+      ratingNote: player.ratingNote || "",
+      doublesPartner: player.doublesPartner || "",
+      needsDoublesPartner: Boolean(player.needsDoublesPartner),
+      notes: player.notes || "",
     });
   }
 
@@ -88,7 +121,11 @@ export default function AdminPlayersManager({ players, matches, language, t, onP
       ...draft,
       name: draft.name.trim(),
       rating: draft.rating === "" || draft.rating === null ? null : Number(draft.rating),
+      ratingNote: draft.ratingNote || "",
       categories: draft.categories.length ? draft.categories : ["singles"],
+      doublesPartner: draft.doublesPartner || "",
+      needsDoublesPartner: Boolean(draft.needsDoublesPartner),
+      notes: draft.notes || "",
     };
   }
 
@@ -138,6 +175,34 @@ export default function AdminPlayersManager({ players, matches, language, t, onP
     if (!window.confirm(t("confirmDeletePlayer"))) return;
     onPlayersChange(players.filter((player) => player.id !== id));
     setSelectedPlayerIds((ids) => ids.filter((item) => item !== id));
+  }
+
+  function importOfficialEntries() {
+    if (!window.confirm(t("confirmImportOfficialEntries"))) return;
+
+    const officialByName = new Map(
+      officialPlayers.map((player) => [normalize(player.name), player])
+    );
+    const existingNames = new Set(players.map((player) => normalize(player.name)));
+
+    const nextPlayers = players.map((player) => {
+      const officialPlayer = officialByName.get(normalize(player.name));
+      return officialPlayer ? prepareOfficialPlayer(officialPlayer, player) : player;
+    });
+
+    const additions = officialPlayers
+      .filter((player) => !existingNames.has(normalize(player.name)))
+      .map((player, index) => prepareOfficialPlayer(player, null, index));
+
+    onPlayersChange([...nextPlayers, ...additions]);
+    setSelectedPlayerIds([]);
+    setBulkNotice(
+      t("officialImportComplete", {
+        players: officialPlayers.length,
+        doubles: officialDoublesPairs.length,
+        needs: playersNeedDoublesPartner.length,
+      })
+    );
   }
 
   function matchCount(playerId, playerName) {
@@ -292,9 +357,14 @@ export default function AdminPlayersManager({ players, matches, language, t, onP
             </select>
           </label>
         </div>
-        <button className="primary-button" type="button" onClick={openAdd}>
-          {t("addPlayer")}
-        </button>
+        <div className="row-actions">
+          <button className="ghost-button" type="button" onClick={importOfficialEntries}>
+            {t("importOfficialEntries")}
+          </button>
+          <button className="primary-button" type="button" onClick={openAdd}>
+            {t("addPlayer")}
+          </button>
+        </div>
       </div>
 
       <div className="bulk-selection-bar">
@@ -354,6 +424,24 @@ export default function AdminPlayersManager({ players, matches, language, t, onP
                     {player.categories.map((id) => (
                       <span key={id}>{getCategoryLabel(id, language)}</span>
                     ))}
+                  </div>
+                  <div className="player-extra-info">
+                    {player.ratingNote && (
+                      <span>
+                        {t("ratingNote")}: {player.ratingNote}
+                      </span>
+                    )}
+                    {player.doublesPartner && (
+                      <span>
+                        {t("doublesPartner")}: {player.doublesPartner}
+                      </span>
+                    )}
+                    {player.needsDoublesPartner && <span>{t("needsDoublesPartner")}</span>}
+                    {player.notes && (
+                      <span>
+                        {t("notes")}: {player.notes}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

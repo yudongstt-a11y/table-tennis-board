@@ -6,6 +6,10 @@ export const emptyPlayer = {
   gender: "Male",
   rating: "",
   categories: ["singles"],
+  ratingNote: "",
+  doublesPartner: "",
+  needsDoublesPartner: false,
+  notes: "",
 };
 
 export default function PlayerForm({ value, language, t, title, error, onChange, onCancel, onSubmit }) {
@@ -83,6 +87,31 @@ export default function PlayerForm({ value, language, t, title, error, onChange,
             />
           </label>
 
+          <label>
+            <span>{t("ratingNote")}</span>
+            <input
+              value={value.ratingNote || ""}
+              onChange={(event) => updateField("ratingNote", event.target.value)}
+            />
+          </label>
+
+          <label>
+            <span>{t("doublesPartner")}</span>
+            <input
+              value={value.doublesPartner || ""}
+              onChange={(event) => updateField("doublesPartner", event.target.value)}
+            />
+          </label>
+
+          <label className="form-checkbox-row">
+            <input
+              type="checkbox"
+              checked={Boolean(value.needsDoublesPartner)}
+              onChange={(event) => updateField("needsDoublesPartner", event.target.checked)}
+            />
+            <span>{t("needsDoublesPartner")}</span>
+          </label>
+
           <fieldset className="category-checkboxes">
             <legend>{t("events")}</legend>
             {CATEGORIES.map((category) => {
@@ -100,6 +129,15 @@ export default function PlayerForm({ value, language, t, title, error, onChange,
               );
             })}
           </fieldset>
+
+          <label className="wide-field">
+            <span>{t("notes")}</span>
+            <textarea
+              value={value.notes || ""}
+              onChange={(event) => updateField("notes", event.target.value)}
+              rows={3}
+            />
+          </label>
 
           {warning && <div className="form-warning">{warning}</div>}
           {error && <div className="form-error">{error}</div>}
