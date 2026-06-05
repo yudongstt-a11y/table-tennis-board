@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { getCategoryLabel } from "../constants/categories.js";
 import { getMatchFormatLabel } from "../constants/matchFormats.js";
-import { tables } from "../data/demoPlayers.js";
 import {
   calculateRemainingSeconds,
   formatCountdown,
@@ -43,6 +42,7 @@ export default function TournamentControl({
   breaks,
   stages,
   tournamentControl,
+  tableNames,
   language,
   t,
   onTournamentStateChange,
@@ -55,7 +55,7 @@ export default function TournamentControl({
   const [breakDraft, setBreakDraft] = useState(null);
 
   const byTable = useMemo(() => {
-    const grouped = new Map(tables.map((table) => [table, []]));
+    const grouped = new Map(tableNames.map((table) => [table, []]));
     matches.forEach((match) => {
       if (match.table && grouped.has(match.table) && match.status !== "Finished") {
         grouped.get(match.table).push(match);
@@ -63,7 +63,7 @@ export default function TournamentControl({
     });
     grouped.forEach((items, table) => grouped.set(table, items.sort(queueSort)));
     return grouped;
-  }, [matches]);
+  }, [matches, tableNames]);
 
   function roundNumber(match) {
     if (Number.isFinite(Number(match.roundNumber))) return Number(match.roundNumber);
@@ -267,7 +267,7 @@ export default function TournamentControl({
         </section>
 
         <div className="control-grid">
-          {tables.map((table) => {
+          {tableNames.map((table) => {
             const queue = byTable.get(table) || [];
             const playing = queue.find((match) => match.status === "Playing");
             const upcoming = queue.filter((match) => match.status === "Upcoming");
@@ -311,7 +311,7 @@ export default function TournamentControl({
                         }
                       >
                         <option value="">{t("selectTargetTable")}</option>
-                        {tables
+                        {tableNames
                           .filter((target) => target !== current.table)
                           .map((target) => (
                             <option key={target} value={target}>{target}</option>
@@ -347,7 +347,7 @@ export default function TournamentControl({
                           }
                         >
                           <option value="">{t("selectTargetTable")}</option>
-                          {tables
+                          {tableNames
                             .filter((target) => target !== match.table)
                             .map((target) => (
                               <option key={target} value={target}>{target}</option>

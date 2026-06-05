@@ -1,4 +1,3 @@
-import { tables } from "../data/demoPlayers.js";
 import EventFilter from "./EventFilter.jsx";
 import PlayerAutocomplete from "./PlayerAutocomplete.jsx";
 
@@ -15,6 +14,7 @@ export default function FilterBar({
   selectedTable,
   selectedCategoryIds,
   players,
+  tableNames,
   language,
   t,
   onSearchChange,
@@ -65,7 +65,7 @@ export default function FilterBar({
       <div className="filter-group table-filter-group">
         <span className="filter-title">{t("tables")}</span>
         <div className="table-tabs">
-          {["All Tables", ...tables].map((table) => (
+          {["All Tables", ...tableNames].map((table) => (
             <button
               key={table}
               className={selectedTable === table ? "active" : ""}

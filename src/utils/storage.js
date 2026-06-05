@@ -1,8 +1,9 @@
 import { getMatchFormat } from "../constants/matchFormats.js";
 import { demoMatches } from "../data/demoMatches.js";
 import { demoBreaks } from "../data/demoBreaks.js";
-import { demoPlayers, tables } from "../data/demoPlayers.js";
+import { demoPlayers } from "../data/demoPlayers.js";
 import { demoStages } from "../data/demoStages.js";
+import { defaultEventTimeline, defaultTournamentSettings } from "../data/demoTournament.js";
 import { categoryIdFromLegacy } from "../constants/categories.js";
 
 const MATCHES_KEY = "table_tennis_schedule_matches";
@@ -11,6 +12,8 @@ const STAGES_KEY = "table_tennis_schedule_stages";
 const TABLE_CONTROLS_KEY = "table_tennis_table_controls";
 const BREAKS_KEY = "table_tennis_breaks";
 const TOURNAMENT_CONTROL_KEY = "table_tennis_tournament_control";
+const TOURNAMENT_SETTINGS_KEY = "table_tennis_tournament_settings";
+const EVENT_TIMELINE_KEY = "table_tennis_event_timeline";
 const SEEDINGS_KEY = "table_tennis_seedings";
 const GROUPS_KEY = "table_tennis_groups";
 
@@ -39,7 +42,27 @@ function readObject(key, fallback) {
 }
 
 function defaultTableControls() {
-  return Object.fromEntries(tables.map((table) => [table, { timeBankSeconds: 0 }]));
+  return Object.fromEntries(
+    getTournamentSettings().tableNames.map((table) => [table, { timeBankSeconds: 0 }])
+  );
+}
+
+function normalizeTableNames(settings) {
+  const tableCount = Math.max(1, Number(settings.tableCount) || 6);
+  const tableNames =
+    Array.isArray(settings.tableNames) && settings.tableNames.length
+      ? settings.tableNames.slice(0, tableCount)
+      : [];
+
+  while (tableNames.length < tableCount) {
+    tableNames.push(`Table ${tableNames.length + 1}`);
+  }
+
+  return {
+    ...settings,
+    tableCount,
+    tableNames,
+  };
 }
 
 function defaultTournamentControl() {
@@ -155,7 +178,7 @@ export function getTableControls() {
   const stored = readObject(TABLE_CONTROLS_KEY, defaults);
 
   return Object.fromEntries(
-    tables.map((table) => [
+    getTournamentSettings().tableNames.map((table) => [
       table,
       {
         timeBankSeconds: Number(stored[table]?.timeBankSeconds) || 0,
@@ -187,6 +210,26 @@ export function saveTournamentControl(tournamentControl) {
   localStorage.setItem(TOURNAMENT_CONTROL_KEY, JSON.stringify(tournamentControl));
 }
 
+export function getTournamentSettings() {
+  return normalizeTableNames(
+    readObject(TOURNAMENT_SETTINGS_KEY, defaultTournamentSettings)
+  );
+}
+
+export function saveTournamentSettings(settings) {
+  localStorage.setItem(TOURNAMENT_SETTINGS_KEY, JSON.stringify(normalizeTableNames(settings)));
+}
+
+export function getEventTimeline() {
+  return readArray(EVENT_TIMELINE_KEY, defaultEventTimeline).sort(
+    (a, b) => (Number(a.order) || 0) - (Number(b.order) || 0) || String(a.timeStart).localeCompare(String(b.timeStart))
+  );
+}
+
+export function saveEventTimeline(items) {
+  localStorage.setItem(EVENT_TIMELINE_KEY, JSON.stringify(items));
+}
+
 export function getSeedings() {
   return readArray(SEEDINGS_KEY, []);
 }
@@ -216,9 +259,11 @@ export function resetDemoData() {
   saveMatches(demoMatches);
   savePlayers(demoPlayers);
   saveStages(demoStages);
+  saveTournamentSettings(defaultTournamentSettings);
   saveTableControls(defaultTableControls());
   saveBreaks(demoBreaks);
   saveTournamentControl(defaultTournamentControl());
+  saveEventTimeline(defaultEventTimeline);
   saveSeedings([]);
   saveGroups([]);
   return {
@@ -228,6 +273,8 @@ export function resetDemoData() {
     tableControls: getTableControls(),
     breaks: getBreaks(),
     tournamentControl: getTournamentControl(),
+    tournamentSettings: getTournamentSettings(),
+    eventTimeline: getEventTimeline(),
     seedings: getSeedings(),
     groups: getGroups(),
   };

@@ -9,6 +9,8 @@ import {
   getTableControls,
   getBreaks,
   getTournamentControl,
+  getTournamentSettings,
+  getEventTimeline,
   getSeedings,
   getGroups,
   saveMatches,
@@ -17,6 +19,8 @@ import {
   saveTableControls,
   saveBreaks,
   saveTournamentControl,
+  saveTournamentSettings,
+  saveEventTimeline,
   saveSeedings,
   saveGroups,
 } from "./utils/storage.js";
@@ -50,6 +54,8 @@ export default function App() {
   const [tableControls, setTableControls] = useState(() => getTableControls());
   const [breaks, setBreaks] = useState(() => getBreaks());
   const [tournamentControl, setTournamentControl] = useState(() => getTournamentControl());
+  const [tournamentSettings, setTournamentSettings] = useState(() => getTournamentSettings());
+  const [eventTimeline, setEventTimeline] = useState(() => getEventTimeline());
   const [seedings, setSeedings] = useState(() => getSeedings());
   const [groups, setGroups] = useState(() => getGroups());
   const [language, setLanguage] = useState(() => localStorage.getItem(LANGUAGE_KEY) || "zh");
@@ -138,6 +144,29 @@ export default function App() {
     saveTournamentControl(nextTournamentControl);
   }
 
+  function updateTournamentSettings(nextTournamentSettings) {
+    setTournamentSettings(nextTournamentSettings);
+    saveTournamentSettings(nextTournamentSettings);
+    setTableControls((current) => {
+      const nextControls = Object.fromEntries(
+        nextTournamentSettings.tableNames.map((table) => [
+          table,
+          current[table] || { timeBankSeconds: 0 },
+        ])
+      );
+      saveTableControls(nextControls);
+      return nextControls;
+    });
+  }
+
+  function updateEventTimeline(nextEventTimeline) {
+    const sorted = [...nextEventTimeline].sort(
+      (a, b) => (Number(a.order) || 0) - (Number(b.order) || 0) || String(a.timeStart).localeCompare(String(b.timeStart))
+    );
+    setEventTimeline(sorted);
+    saveEventTimeline(sorted);
+  }
+
   function updateSeedings(nextSeedings) {
     setSeedings(nextSeedings);
     saveSeedings(nextSeedings);
@@ -160,6 +189,8 @@ export default function App() {
     setTableControls(nextData.tableControls);
     setBreaks(nextData.breaks);
     setTournamentControl(nextData.tournamentControl);
+    setTournamentSettings(nextData.tournamentSettings);
+    setEventTimeline(nextData.eventTimeline);
     setSeedings(nextData.seedings);
     setGroups(nextData.groups);
   }
@@ -210,6 +241,7 @@ export default function App() {
 
   if (
     path === "/admin/dashboard" ||
+    path === "/admin/setup" ||
     path === "/admin/players" ||
     path === "/admin/stages" ||
     path === "/admin/grouping" ||
@@ -231,13 +263,15 @@ export default function App() {
         initialTab={
           path === "/admin/players"
             ? "players"
-            : path === "/admin/stages"
-              ? "stages"
-              : path === "/admin/grouping"
-                ? "grouping"
-                : path === "/admin/control"
-                  ? "control"
-                  : "matches"
+            : path === "/admin/setup"
+              ? "setup"
+              : path === "/admin/stages"
+                ? "stages"
+                : path === "/admin/grouping"
+                  ? "grouping"
+                  : path === "/admin/control"
+                    ? "control"
+                    : "matches"
         }
         language={language}
         matches={sortedMatches}
@@ -246,6 +280,8 @@ export default function App() {
         tableControls={tableControls}
         breaks={breaks}
         tournamentControl={tournamentControl}
+        tournamentSettings={tournamentSettings}
+        eventTimeline={eventTimeline}
         seedings={seedings}
         groups={groups}
         onLanguageChange={updateLanguage}
@@ -255,6 +291,8 @@ export default function App() {
         onTableControlsChange={updateTableControls}
         onBreaksChange={updateBreaks}
         onTournamentControlChange={updateTournamentControl}
+        onTournamentSettingsChange={updateTournamentSettings}
+        onEventTimelineChange={updateEventTimeline}
         onSeedingsChange={updateSeedings}
         onGroupsChange={updateGroups}
         onTournamentStateChange={updateTournamentState}
@@ -269,6 +307,10 @@ export default function App() {
     <ScheduleBoard
       matches={sortedMatches}
       players={sortedPlayers}
+      stages={stages}
+      groups={groups}
+      tournamentSettings={tournamentSettings}
+      eventTimeline={eventTimeline}
       language={language}
       tournamentControl={tournamentControl}
       onLanguageChange={updateLanguage}

@@ -4,6 +4,8 @@ import { getTranslator } from "../i18n/translations.js";
 import FilterBar from "./FilterBar.jsx";
 import MatchCard from "./MatchCard.jsx";
 import PublicPlayersList from "./PublicPlayersList.jsx";
+import PublicGroups from "./PublicGroups.jsx";
+import PublicTimeline from "./PublicTimeline.jsx";
 import LanguageToggle from "./LanguageToggle.jsx";
 
 function todayLabel(matches, language) {
@@ -23,6 +25,10 @@ function normalize(value) {
 export default function ScheduleBoard({
   matches,
   players,
+  stages,
+  groups,
+  tournamentSettings,
+  eventTimeline,
   language,
   tournamentControl,
   onLanguageChange,
@@ -72,6 +78,17 @@ export default function ScheduleBoard({
 
   const playingCount = matches.filter((match) => match.status === "Playing").length;
   const upcomingCount = matches.filter((match) => match.status === "Upcoming").length;
+  const tournamentName =
+    language === "zh"
+      ? tournamentSettings.nameZh
+      : tournamentSettings.nameEn || tournamentSettings.nameZh;
+  const tournamentDate = tournamentSettings.date
+    ? new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en-AU", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      }).format(new Date(`${tournamentSettings.date}T00:00:00`))
+    : todayLabel(matches, language);
 
   function handleSearchChange(value) {
     setSearch(value);
@@ -99,8 +116,8 @@ export default function ScheduleBoard({
       <header className="public-header">
         <div>
           <p className="eyebrow">{t("publicBoard")}</p>
-          <h1>{t("appTitle")}</h1>
-          <p className="subtle">{todayLabel(matches, language)} · {t("liveSchedule")}</p>
+          <h1>{tournamentName || t("appTitle")}</h1>
+          <p className="subtle">{t("liveSchedule")}</p>
         </div>
         <div className="header-actions">
           <LanguageToggle language={language} onLanguageChange={onLanguageChange} />
@@ -110,6 +127,21 @@ export default function ScheduleBoard({
           </div>
         </div>
       </header>
+
+      <section className="tournament-info-card">
+        <div>
+          <span>{t("tournamentDate")}</span>
+          <strong>{tournamentDate}</strong>
+        </div>
+        <div>
+          <span>{t("venue")}</span>
+          <strong>{tournamentSettings.venue}</strong>
+        </div>
+        <div>
+          <span>{t("tables")}</span>
+          <strong>{tournamentSettings.tableCount}</strong>
+        </div>
+      </section>
 
       <section className={`tournament-banner ${tournamentControl?.status || "not_started"}`}>
         <strong>{t(`tournament_${tournamentControl?.status || "not_started"}`)}</strong>
@@ -131,10 +163,35 @@ export default function ScheduleBoard({
         >
           {t("players")}
         </button>
+        <button
+          className={activeTab === "groups" ? "active" : ""}
+          type="button"
+          onClick={() => setActiveTab("groups")}
+        >
+          {t("groups")}
+        </button>
+        <button
+          className={activeTab === "timeline" ? "active" : ""}
+          type="button"
+          onClick={() => setActiveTab("timeline")}
+        >
+          {t("timeline")}
+        </button>
       </nav>
 
       {activeTab === "players" ? (
         <PublicPlayersList players={players} matches={matches} language={language} t={t} />
+      ) : activeTab === "groups" ? (
+        <PublicGroups
+          groups={groups}
+          matches={matches}
+          players={players}
+          stages={stages}
+          language={language}
+          t={t}
+        />
+      ) : activeTab === "timeline" ? (
+        <PublicTimeline items={eventTimeline} language={language} t={t} />
       ) : (
         <>
           <FilterBar
@@ -143,6 +200,7 @@ export default function ScheduleBoard({
             selectedTable={selectedTable}
             selectedCategoryIds={selectedCategoryIds}
             players={players}
+            tableNames={tournamentSettings.tableNames}
             language={language}
             t={t}
             onSearchChange={handleSearchChange}

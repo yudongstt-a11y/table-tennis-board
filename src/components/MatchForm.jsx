@@ -1,6 +1,5 @@
 import { CATEGORIES } from "../constants/categories.js";
 import { getMatchFormat, getMatchFormatLabel, getStageFormatLabel } from "../constants/matchFormats.js";
-import { tables } from "../data/demoPlayers.js";
 import PlayerAutocomplete from "./PlayerAutocomplete.jsx";
 
 export const emptyMatch = {
@@ -36,7 +35,7 @@ export const emptyMatch = {
   isBye: false,
 };
 
-export default function MatchForm({ value, players, stages = [], language, t, title, onChange, onCancel, onSubmit }) {
+export default function MatchForm({ value, players, stages = [], tableNames = [], language, t, title, onChange, onCancel, onSubmit }) {
   const isDoubles = value.categoryId === "mixed_doubles";
 
   function updateField(field, nextValue) {
@@ -112,7 +111,7 @@ export default function MatchForm({ value, players, stages = [], language, t, ti
           <label>
             <span>{t("table")}</span>
             <select value={value.table} onChange={(event) => updateField("table", event.target.value)}>
-              {tables.map((table) => (
+              {tableNames.map((table) => (
                 <option key={table}>{table}</option>
               ))}
             </select>

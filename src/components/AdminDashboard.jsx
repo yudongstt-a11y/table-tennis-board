@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { getCategoryLabel } from "../constants/categories.js";
 import { getMatchFormatLabel } from "../constants/matchFormats.js";
-import { tables } from "../data/demoPlayers.js";
 import { getTranslator } from "../i18n/translations.js";
 import {
   isFirstTableMatch,
@@ -18,6 +17,7 @@ import LanguageToggle from "./LanguageToggle.jsx";
 import MatchForm, { emptyMatch } from "./MatchForm.jsx";
 import ResultSubmitter from "./ResultSubmitter.jsx";
 import TournamentControl from "./TournamentControl.jsx";
+import TournamentSetup from "./TournamentSetup.jsx";
 
 function toInputTime(time) {
   return String(time).slice(0, 16);
@@ -63,6 +63,8 @@ export default function AdminDashboard({
   tableControls,
   breaks,
   tournamentControl,
+  tournamentSettings,
+  eventTimeline,
   seedings,
   groups,
   onLanguageChange,
@@ -72,6 +74,8 @@ export default function AdminDashboard({
   onTableControlsChange,
   onBreaksChange,
   onTournamentControlChange,
+  onTournamentSettingsChange,
+  onEventTimelineChange,
   onSeedingsChange,
   onGroupsChange,
   onTournamentStateChange,
@@ -119,6 +123,7 @@ export default function AdminDashboard({
       winnerGames: stage?.winnerGames || emptyMatch.winnerGames,
       defaultMinutes: stage?.defaultMatchMinutes || emptyMatch.defaultMinutes,
       defaultMatchMinutes: stage?.defaultMatchMinutes || emptyMatch.defaultMatchMinutes,
+      table: tournamentSettings.tableNames[0] || emptyMatch.table,
       tableOrder: Date.now(),
     });
   }
@@ -247,7 +252,7 @@ export default function AdminDashboard({
           }
         >
           <option value="">{t("selectTargetTable")}</option>
-          {tables
+          {tournamentSettings.tableNames
             .filter((table) => table !== match.table)
             .map((table) => (
               <option key={table} value={table}>{table}</option>
@@ -331,7 +336,7 @@ export default function AdminDashboard({
       </header>
 
       <nav className="top-tabs" aria-label="Admin sections">
-        {["matches", "players", "stages", "grouping", "control"].map((tab) => (
+        {["setup", "matches", "players", "stages", "grouping", "control"].map((tab) => (
           <button
             className={activeTab === tab ? "active" : ""}
             type="button"
@@ -343,7 +348,16 @@ export default function AdminDashboard({
         ))}
       </nav>
 
-      {activeTab === "players" ? (
+      {activeTab === "setup" ? (
+        <TournamentSetup
+          settings={tournamentSettings}
+          eventTimeline={eventTimeline}
+          language={language}
+          t={t}
+          onSettingsChange={onTournamentSettingsChange}
+          onEventTimelineChange={onEventTimelineChange}
+        />
+      ) : activeTab === "players" ? (
         <AdminPlayersManager
           players={players}
           matches={matches}
@@ -380,6 +394,7 @@ export default function AdminDashboard({
           onTournamentControlChange={onTournamentControlChange}
           onSubmitResult={handleSubmitResult}
           onMoveMatch={handleMoveMatch}
+          tableNames={tournamentSettings.tableNames}
         />
       ) : (
         <>
@@ -441,6 +456,7 @@ export default function AdminDashboard({
           onChange={setDraft}
           onCancel={closeForm}
           onSubmit={handleSubmit}
+          tableNames={tournamentSettings.tableNames}
         />
       )}
     </main>

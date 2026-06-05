@@ -118,6 +118,7 @@ export default function AdminGroupingManager({
       id: groupStorageId(eventId, selectedStage.id, group.order),
       eventId,
       stageId: selectedStage.id,
+      published: false,
     }));
     setDraftGroups(nextGroups);
     setNotice("");
@@ -150,10 +151,26 @@ export default function AdminGroupingManager({
 
     const nextGroups = [
       ...groups.filter((group) => !(group.eventId === eventId && group.stageId === selectedStage.id)),
-      ...draftGroups,
+      ...draftGroups.map((group) => ({
+        ...group,
+        published: currentGroups.some((currentGroup) => currentGroup.published),
+      })),
     ];
     onGroupsChange(nextGroups);
     setNotice(t("groupsSaved"));
+  }
+
+  function setGroupsPublished(published) {
+    if (!selectedStage) return;
+    onGroupsChange(
+      groups.map((group) =>
+        group.eventId === eventId && group.stageId === selectedStage.id
+          ? { ...group, published }
+          : group
+      )
+    );
+    setDraftGroups((current) => current.map((group) => ({ ...group, published })));
+    setNotice(published ? t("groupsPublished") : t("groupsUnpublished"));
   }
 
   function generateGroupMatches() {
@@ -310,6 +327,9 @@ export default function AdminGroupingManager({
             <div className="row-actions">
               <button className="primary-button" type="button" onClick={saveGroups}>
                 {t("saveGroups")}
+              </button>
+              <button className="ghost-button" type="button" onClick={() => setGroupsPublished(!currentGroups.some((group) => group.published))}>
+                {currentGroups.some((group) => group.published) ? t("unpublishGroups") : t("publishGroups")}
               </button>
               <button className="ghost-button" type="button" onClick={generateGroupMatches}>
                 {t("generateGroupMatches")}
