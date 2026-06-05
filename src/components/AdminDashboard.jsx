@@ -9,6 +9,14 @@ import {
   submitMatchResult,
 } from "../utils/matchProgression.js";
 import { calculateRemainingSeconds, formatCountdown, formatOvertime } from "../utils/matchTimer.js";
+import {
+  compareMatchesBySchedule,
+  formatMatchTime,
+  fromBrisbaneInputDateTime,
+  getMatchScheduledTime,
+  recalculateScheduledTimes,
+  toBrisbaneInputDateTime,
+} from "../utils/matchSchedule.js";
 import { resetDemoData } from "../utils/storage.js";
 import AdminGroupingManager from "./AdminGroupingManager.jsx";
 import AdminPlayersManager from "./AdminPlayersManager.jsx";
@@ -18,24 +26,6 @@ import MatchForm, { emptyMatch } from "./MatchForm.jsx";
 import ResultSubmitter from "./ResultSubmitter.jsx";
 import TournamentControl from "./TournamentControl.jsx";
 import TournamentSetup from "./TournamentSetup.jsx";
-
-function toInputTime(time) {
-  return String(time).slice(0, 16);
-}
-
-function fromInputTime(time) {
-  return time.length === 16 ? `${time}:00` : time;
-}
-
-function displayTime(time) {
-  return new Intl.DateTimeFormat("en-AU", {
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date(time));
-}
 
 function syncMatchesWithPlayers(matches, players) {
   const playerMap = new Map(players.map((player) => [player.id, player]));
@@ -96,6 +86,7 @@ export default function AdminDashboard({
   const [editingId, setEditingId] = useState(null);
   const [statusNotice, setStatusNotice] = useState("");
   const [moveDraft, setMoveDraft] = useState({});
+  const [recalculateDraft, setRecalculateDraft] = useState(null);
   const [, setTick] = useState(0);
 
   useEffect(() => {
@@ -137,7 +128,7 @@ export default function AdminDashboard({
 
   function openEdit(match) {
     setEditingId(match.id);
-    setDraft({ ...match, time: toInputTime(match.time) });
+    setDraft({ ...match, scheduledTime: toBrisbaneInputDateTime(getMatchScheduledTime(match)) });
   }
 
   function closeForm() {
@@ -149,7 +140,8 @@ export default function AdminDashboard({
     const stage = stages.find((item) => item.id === draft.stageId);
     return {
       ...draft,
-      time: fromInputTime(draft.time),
+      scheduledTime: fromBrisbaneInputDateTime(draft.scheduledTime),
+      time: fromBrisbaneInputDateTime(draft.scheduledTime),
       eventId: draft.eventId || draft.categoryId,
       tableOrder: Number.isFinite(Number(draft.tableOrder)) ? Number(draft.tableOrder) : Date.now(),
       stageFormat: draft.stageFormat || stage?.format || "round_robin",
@@ -216,6 +208,19 @@ export default function AdminDashboard({
 
     onMatchesChange(moveMatchToTable(matches, matchId, targetTable));
     setMoveDraft((current) => ({ ...current, [matchId]: "" }));
+  }
+
+  function applyRecalculateTimes(event) {
+    event.preventDefault();
+    if (!recalculateDraft?.startTime) return;
+    onMatchesChange(
+      recalculateScheduledTimes(matches, {
+        startTime: recalculateDraft.startTime,
+        tournamentDate: tournamentSettings.date,
+      }).sort(compareMatchesBySchedule)
+    );
+    setRecalculateDraft(null);
+    setStatusNotice(t("matchTimesRecalculated"));
   }
 
   function handlePlayersChange(nextPlayers) {
@@ -335,9 +340,18 @@ export default function AdminDashboard({
             {t("clearLocalCache")}
           </button>
           {activeTab === "matches" && (
-            <button className="primary-button" type="button" onClick={openAdd}>
-              {t("addMatch")}
-            </button>
+            <>
+              <button
+                className="ghost-button"
+                type="button"
+                onClick={() => setRecalculateDraft({ startTime: "10:00" })}
+              >
+                {t("recalculateMatchTimes")}
+              </button>
+              <button className="primary-button" type="button" onClick={openAdd}>
+                {t("addMatch")}
+              </button>
+            </>
           )}
           <button className="ghost-button" type="button" onClick={onLogout}>
             {t("logout")}
@@ -445,7 +459,7 @@ export default function AdminDashboard({
                 <div className="admin-match-main">
                   <span className="table-pill">{match.table || t("advancedByBye")}</span>
                   <div>
-                    <strong>{displayTime(match.time)}</strong>
+                    <strong>{formatMatchTime(match, t)}</strong>
                     <p>
                       {getCategoryLabel(match.categoryId, language)} · {match.round} ·{" "}
                       {getMatchFormatLabel(match.matchFormat, language)}
@@ -486,6 +500,42 @@ export default function AdminDashboard({
           onSubmit={handleSubmit}
           tableNames={tournamentSettings.tableNames}
         />
+      )}
+
+      {recalculateDraft && (
+        <div className="modal-backdrop" role="presentation">
+          <section className="match-modal" role="dialog" aria-modal="true" aria-label={t("recalculateMatchTimes")}>
+            <div className="modal-header">
+              <div>
+                <p className="eyebrow">{t("matches")}</p>
+                <h2>{t("recalculateMatchTimes")}</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={() => setRecalculateDraft(null)}>
+                X
+              </button>
+            </div>
+            <form className="match-form" onSubmit={applyRecalculateTimes}>
+              <label>
+                <span>{t("startTime")}</span>
+                <input
+                  type="time"
+                  value={recalculateDraft.startTime}
+                  onChange={(event) => setRecalculateDraft({ startTime: event.target.value })}
+                  required
+                />
+              </label>
+              <p className="form-hint">{t("recalculateMatchTimesHelp")}</p>
+              <div className="form-actions">
+                <button className="ghost-button" type="button" onClick={() => setRecalculateDraft(null)}>
+                  {t("cancel")}
+                </button>
+                <button className="primary-button" type="submit">
+                  {t("apply")}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
       )}
     </main>
   );

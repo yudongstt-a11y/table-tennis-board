@@ -18,6 +18,7 @@ import {
   doublesEntrySummary,
 } from "../utils/doublesEntries.js";
 import { generateKnockoutMatches } from "../utils/knockoutBracket.js";
+import { brisbaneDateTimeToIso, getMatchDurationMinutes } from "../utils/matchSchedule.js";
 import { ratingLabel } from "./PlayerAutocomplete.jsx";
 
 function seedingId(eventId, stageId) {
@@ -228,7 +229,7 @@ export default function AdminGroupingManager({
       tableCount: tournamentSettings.tableCount,
       selectedTables: tournamentSettings.tableNames.slice(0, tournamentSettings.tableCount),
       scope: "current_stage",
-      startTime: "09:30",
+      startTime: "",
       error: "",
     });
   }
@@ -266,11 +267,11 @@ export default function AdminGroupingManager({
         const nextOrder = (orderMap.get(table) || 0) + 1;
         orderMap.set(table, nextOrder);
 
-        let time = match.time;
+        let scheduledTime = match.scheduledTime || match.time || "";
         if (startMsByTable) {
           const startMs = startMsByTable.get(table);
-          time = new Date(startMs).toISOString().slice(0, 19);
-          startMsByTable.set(table, startMs + (Number(match.defaultMinutes) || 25) * 60 * 1000);
+          scheduledTime = new Date(startMs).toISOString();
+          startMsByTable.set(table, startMs + getMatchDurationMinutes(match) * 60 * 1000);
         }
 
         return {
@@ -279,7 +280,8 @@ export default function AdminGroupingManager({
           tableOrder: nextOrder,
           stageOrder: Number(match.stageOrder || selectedStage?.order || 1),
           batchIndex: nextOrder,
-          time,
+          scheduledTime,
+          time: scheduledTime,
         };
       });
   }
@@ -312,9 +314,10 @@ export default function AdminGroupingManager({
 
     const targetStageIds = new Set(targetStages.map((stage) => stage.id));
     const retainedMatches = matches.filter((match) => !targetStageIds.has(match.stageId));
-    const startDate = generateDraft.startTime
-      ? new Date(`${tournamentSettings.date || "2026-06-15"}T${generateDraft.startTime}:00`)
-      : null;
+    const startIso = generateDraft.startTime
+      ? brisbaneDateTimeToIso(tournamentSettings.date || "2026-06-06", generateDraft.startTime)
+      : "";
+    const startDate = startIso ? new Date(startIso) : null;
     let batchStartMs = startDate && !Number.isNaN(startDate.getTime()) ? startDate.getTime() : null;
     const orderMap = tableOrderMap(retainedMatches);
     const generatedMatches = [];

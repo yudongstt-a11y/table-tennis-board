@@ -195,7 +195,8 @@ export function matchFromDb(row) {
     bracketPosition: row.bracket_position,
     table: row.table_name || "",
     tableOrder: row.table_order ?? 1000,
-    time: row.scheduled_time ? row.scheduled_time.slice(0, 19) : "",
+    scheduledTime: row.scheduled_time || "",
+    time: row.scheduled_time || "",
     playerAId: row.player_a_id || "",
     playerAName: row.player_a_name || "",
     playerARating: row.player_a_rating,
@@ -223,6 +224,8 @@ export function matchFromDb(row) {
 }
 
 export function matchToDb(match, tournamentId) {
+  const scheduledTime = match.scheduledTime || match.time || "";
+
   return {
     ...withUuidId(match),
     tournament_id: tournamentId,
@@ -240,7 +243,7 @@ export function matchToDb(match, tournamentId) {
     bracket_position: match.bracketPosition || null,
     table_name: match.table || null,
     table_order: Number.isFinite(Number(match.tableOrder)) ? Number(match.tableOrder) : null,
-    scheduled_time: match.time ? new Date(match.time).toISOString() : null,
+    scheduled_time: scheduledTime ? new Date(scheduledTime).toISOString() : null,
     player_a_id: isUuid(match.playerAId) ? match.playerAId : null,
     player_a_name: match.playerAName || null,
     player_a_rating: match.playerARating ?? null,

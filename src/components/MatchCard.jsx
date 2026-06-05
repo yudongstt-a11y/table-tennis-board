@@ -1,22 +1,7 @@
 import { getCategoryLabel } from "../constants/categories.js";
 import { getMatchFormatLabel } from "../constants/matchFormats.js";
 import { calculateRemainingSeconds, formatCountdown, formatOvertime } from "../utils/matchTimer.js";
-
-function formatTime(dateString) {
-  return new Intl.DateTimeFormat("en-AU", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date(dateString));
-}
-
-function formatDate(dateString, language) {
-  return new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en-AU", {
-    month: "long",
-    day: "numeric",
-    weekday: "short",
-  }).format(new Date(dateString));
-}
+import { formatMatchDate, formatMatchTime, getMatchScheduledTime } from "../utils/matchSchedule.js";
 
 function playerLabel(name, rating) {
   if (rating === null || rating === undefined || rating === "") return name;
@@ -29,6 +14,7 @@ function statusText(status, t) {
 
 export default function MatchCard({ match, language, t, compact = false }) {
   const isFinished = match.status === "Finished";
+  const scheduledTime = getMatchScheduledTime(match);
   const remaining = calculateRemainingSeconds(match);
   const isOvertime = match.status === "Playing" && remaining <= 0;
   const scoreText = (() => {
@@ -40,8 +26,8 @@ export default function MatchCard({ match, language, t, compact = false }) {
   return (
     <article className={`match-card ${match.status.toLowerCase()} ${compact ? "compact" : ""}`}>
       <div className="match-time">
-        <strong>{formatTime(match.time)}</strong>
-        <span>{formatDate(match.time, language)}</span>
+        <strong>{formatMatchTime(match, t)}</strong>
+        <span>{scheduledTime ? formatMatchDate(match, language, t) : ""}</span>
       </div>
 
       <div className="match-main">

@@ -2,6 +2,12 @@ function ratingValue(player) {
   return player.rating === null || player.rating === undefined ? -Infinity : Number(player.rating);
 }
 
+function toScheduledIso(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString();
+}
+
 export function seedPlayers(players) {
   return [...players].sort((a, b) => {
     const seedDiff = (Number(a.seed) || 9999) - (Number(b.seed) || 9999);
@@ -59,7 +65,7 @@ export function createRoundRobinMatches({ players, stage, startTime, tableList }
 
   return rounds.flatMap((round, roundIndex) =>
     round.map(([playerA, playerB], matchIndex) => {
-      const time = new Date(start.getTime() + roundIndex * stage.defaultMatchMinutes * 60 * 1000);
+      const time = toScheduledIso(start.getTime() + roundIndex * stage.defaultMatchMinutes * 60 * 1000);
       return {
         id: `m${Date.now()}_${roundIndex}_${matchIndex}`,
         eventId: stage.eventId,
@@ -73,7 +79,8 @@ export function createRoundRobinMatches({ players, stage, startTime, tableList }
         remainingSeconds: null,
         groupId: "group_a",
         round: `Round ${roundIndex + 1}`,
-        time: time.toISOString().slice(0, 19),
+        scheduledTime: time,
+        time,
         table: tableList[matchIndex % tableList.length],
         tableOrder: roundIndex * 100 + matchIndex,
         playerAId: playerA.id,

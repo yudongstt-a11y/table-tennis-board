@@ -23,6 +23,7 @@ import {
   subscribeToTournamentData,
 } from "./services/dataRepository.js";
 import { LANGUAGE_KEY } from "./i18n/translations.js";
+import { compareMatchesBySchedule } from "./utils/matchSchedule.js";
 
 const ADMIN_LOGGED_IN_KEY = "adminLoggedIn";
 const ADMIN_REMEMBERED_KEY = "adminRemembered";
@@ -132,7 +133,7 @@ export default function App() {
   }, [tournamentControl.status]);
 
   const sortedMatches = useMemo(
-    () => [...matches].sort((a, b) => new Date(a.time) - new Date(b.time)),
+    () => [...matches].sort(compareMatchesBySchedule),
     [matches]
   );
 
@@ -142,7 +143,7 @@ export default function App() {
   );
 
   function updateMatches(nextMatches) {
-    const sorted = [...nextMatches].sort((a, b) => new Date(a.time) - new Date(b.time));
+    const sorted = [...nextMatches].sort(compareMatchesBySchedule);
     setMatches(sorted);
     saveMatchesData(sorted).catch((error) => setDataSourceError(error.message));
   }

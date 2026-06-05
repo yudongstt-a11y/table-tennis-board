@@ -112,8 +112,6 @@ export function averageEntryRating(entryIds, entriesById) {
 }
 
 export function createGroupMatches({ groups, playersById, entriesById = playersById, stage, eventId }) {
-  const baseTime = new Date("2026-06-15T09:00:00");
-
   return groups.flatMap((group) => {
     const isPairs = group.entryType === "pair";
     const groupEntries = groupEntryIds(group).map((id) => entriesById.get(id) || playersById.get(id)).filter(Boolean);
@@ -121,10 +119,6 @@ export function createGroupMatches({ groups, playersById, entriesById = playersB
 
     return rounds.flatMap((round, roundIndex) =>
       round.map(([playerA, playerB], matchIndex) => {
-        const time = new Date(
-          baseTime.getTime() + (group.order - 1) * 60 * 60 * 1000 + roundIndex * 20 * 60 * 1000
-        );
-
         return {
           id: `m_group_${stage.id}_${group.order}_${roundIndex + 1}_${matchIndex + 1}_${Date.now()}`,
           eventId,
@@ -143,7 +137,8 @@ export function createGroupMatches({ groups, playersById, entriesById = playersB
           bracketPosition: null,
           round: `${group.name} - Round ${roundIndex + 1}`,
           roundNumber: roundIndex + 1,
-          time: time.toISOString().slice(0, 19),
+          scheduledTime: "",
+          time: "",
           table: "",
           tableOrder: 1000 + group.order * 100 + roundIndex * 10 + matchIndex,
           playerAId: isPairs ? "" : playerA.id,

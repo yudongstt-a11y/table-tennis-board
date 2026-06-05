@@ -196,6 +196,7 @@ export function generateKnockoutMatches({ entries, stage, tournamentId }) {
         bracketPosition: matchIndex + 1,
         table: "",
         tableOrder: null,
+        scheduledTime: "",
         time: "",
         isBye: false,
         status: "Upcoming",

@@ -6,6 +6,7 @@ import {
   buildDoublesEntriesFromPlayers,
   doublesEntryDisplayName,
 } from "../utils/doublesEntries.js";
+import { compareMatchesBySchedule } from "../utils/matchSchedule.js";
 import { ratingLabel } from "./PlayerAutocomplete.jsx";
 
 const eventTabs = [
@@ -95,7 +96,7 @@ function BracketRounds({ matches, t }) {
             .sort(
               (a, b) =>
                 (Number(a.bracketPosition) || 0) - (Number(b.bracketPosition) || 0) ||
-                String(a.time).localeCompare(String(b.time))
+                compareMatchesBySchedule(a, b)
             )
             .map((match) => {
               const winner = matchWinnerName(match);

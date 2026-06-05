@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { CATEGORIES, getCategoryLabel } from "../constants/categories.js";
+import { compareMatchesBySchedule } from "../utils/matchSchedule.js";
 import { ratingLabel } from "./PlayerAutocomplete.jsx";
 import MatchCard from "./MatchCard.jsx";
 
@@ -27,7 +28,7 @@ function matchesForPlayer(player, matches) {
         match.playerAName.includes(player.name) ||
         match.playerBName.includes(player.name)
     )
-    .sort((a, b) => new Date(a.time) - new Date(b.time));
+    .sort(compareMatchesBySchedule);
 }
 
 export default function PublicPlayersList({ players, matches, language, t }) {

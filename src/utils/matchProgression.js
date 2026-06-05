@@ -5,15 +5,16 @@ import {
   startMatchTimer,
   stopMatchTimer,
 } from "./matchTimer.js";
+import { compareMatchesBySchedule } from "./matchSchedule.js";
 
 function byQueue(a, b) {
   const tableOrderDiff = (Number(a.tableOrder) || 1000) - (Number(b.tableOrder) || 1000);
   if (tableOrderDiff !== 0) return tableOrderDiff;
-  return new Date(a.time) - new Date(b.time);
+  return compareMatchesBySchedule(a, b);
 }
 
 function byTime(a, b) {
-  return new Date(a.time) - new Date(b.time);
+  return compareMatchesBySchedule(a, b);
 }
 
 function tableMatches(matches, table) {

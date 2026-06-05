@@ -4,7 +4,8 @@ import { buildDoublesEntriesFromPlayers, doublesEntryDisplayName } from "../util
 import PlayerAutocomplete from "./PlayerAutocomplete.jsx";
 
 export const emptyMatch = {
-  time: "2026-06-15T09:00",
+  scheduledTime: "",
+  time: "",
   table: "Table 1",
   tableOrder: 1000,
   eventId: "singles",
@@ -113,9 +114,8 @@ export default function MatchForm({ value, players, doublesPairs = [], stages = 
             <span>{t("time")}</span>
             <input
               type="datetime-local"
-              value={value.time}
-              onChange={(event) => updateField("time", event.target.value)}
-              required
+              value={value.scheduledTime || ""}
+              onChange={(event) => updateField("scheduledTime", event.target.value)}
             />
           </label>
 

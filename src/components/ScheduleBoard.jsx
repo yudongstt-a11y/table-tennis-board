@@ -7,10 +7,12 @@ import PublicPlayersList from "./PublicPlayersList.jsx";
 import PublicGroups from "./PublicGroups.jsx";
 import PublicTimeline from "./PublicTimeline.jsx";
 import LanguageToggle from "./LanguageToggle.jsx";
+import { getMatchScheduledTime } from "../utils/matchSchedule.js";
 
 function todayLabel(matches, language) {
-  const first = matches[0]?.time || new Date().toISOString();
+  const first = getMatchScheduledTime(matches[0]) || new Date().toISOString();
   return new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en-AU", {
+    timeZone: "Australia/Brisbane",
     year: "numeric",
     month: "long",
     day: "numeric",
