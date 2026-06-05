@@ -1,7 +1,6 @@
 import { supabase, supabaseConfigError } from "../lib/supabaseClient.js";
 import { DEFAULT_TOURNAMENT_SLUG } from "../config/dataSource.js";
-import { defaultEventTimeline, defaultTournamentSettings } from "../data/demoTournament.js";
-import { demoStages } from "../data/demoStages.js";
+import { defaultTournamentSettings } from "../data/demoTournament.js";
 import {
   breakFromDb,
   breakToDb,
@@ -88,8 +87,8 @@ export async function loadAllData() {
     run(supabase.from("seedings").select("*").eq("tournament_id", id)),
   ]);
 
-  const mappedStages = stages.length ? stages.map(stageFromDb) : demoStages;
-  const mappedTimeline = timeline.length ? timeline.map(timelineFromDb) : defaultEventTimeline;
+  const mappedStages = stages.map(stageFromDb);
+  const mappedTimeline = timeline.map(timelineFromDb);
   const controls = tableControlsFromDb(tableControls);
   const settings = tournamentFromDb(tournament);
   settings.tableNames.forEach((table) => {

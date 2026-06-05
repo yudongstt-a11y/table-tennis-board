@@ -85,6 +85,7 @@ export default function AdminDashboard({
   onTournamentStateChange,
   onReplaceAllData,
   onOfficialDoublesImport,
+  onClearLocalCache,
   onLogout,
   onPublicView,
 }) {
@@ -329,6 +330,9 @@ export default function AdminDashboard({
           <button className="ghost-button" type="button" onClick={onPublicView}>
             {t("publicView")}
           </button>
+          <button className="ghost-button" type="button" onClick={onClearLocalCache}>
+            {t("clearLocalCache")}
+          </button>
           {activeTab === "matches" && (
             <button className="primary-button" type="button" onClick={openAdd}>
               {t("addMatch")}
@@ -424,9 +428,11 @@ export default function AdminDashboard({
           </section>
 
           <section className="admin-toolbar">
-            <button className="ghost-button" type="button" onClick={restoreDemoData}>
-              {t("restoreDemoData")}
-            </button>
+            {dataSource === "localStorage" && (
+              <button className="ghost-button" type="button" onClick={restoreDemoData}>
+                {t("restoreDemoData")}
+              </button>
+            )}
           </section>
           {statusNotice && <div className="status-notice">{statusNotice}</div>}
 

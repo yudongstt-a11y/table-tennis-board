@@ -5,7 +5,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const supabaseConfigError =
   !supabaseUrl || !supabaseAnonKey
-    ? "Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY. Supabase mode needs these environment variables."
+    ? "Supabase configuration is missing. The app cannot connect to the live database."
     : "";
 
 if (supabaseConfigError) {

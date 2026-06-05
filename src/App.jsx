@@ -2,30 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import ScheduleBoard from "./components/ScheduleBoard.jsx";
 import AdminLogin from "./components/AdminLogin.jsx";
 import AdminDashboard from "./components/AdminDashboard.jsx";
-import {
-  getMatches,
-  getPlayers,
-  getStages,
-  getTableControls,
-  getBreaks,
-  getTournamentControl,
-  getTournamentSettings,
-  getEventTimeline,
-  getSeedings,
-  getGroups,
-  getDoublesPairs,
-  saveMatches,
-  savePlayers,
-  saveStages,
-  saveTableControls,
-  saveBreaks,
-  saveTournamentControl,
-  saveTournamentSettings,
-  saveEventTimeline,
-  saveSeedings,
-  saveGroups,
-  saveDoublesPairs,
-} from "./utils/storage.js";
+import { clearLocalCacheData } from "./utils/storage.js";
+import { defaultEventTimeline, defaultTournamentSettings } from "./data/demoTournament.js";
 import {
   DATA_SOURCE,
   importOfficialDoublesPairsData,
@@ -49,6 +27,15 @@ const ADMIN_LOGGED_IN_KEY = "adminLoggedIn";
 const ADMIN_REMEMBERED_KEY = "adminRemembered";
 const LEGACY_ADMIN_SESSION_KEY = "table_tennis_admin_session";
 
+const isLocalStorageMode = DATA_SOURCE === "localStorage";
+
+const emptyTournamentControl = {
+  status: "not_started",
+  startedAt: null,
+  pausedAt: null,
+  activeBreakId: null,
+};
+
 function getPath() {
   return window.location.pathname || "/";
 }
@@ -67,17 +54,17 @@ function hasAdminSession() {
 
 export default function App() {
   const [path, setPath] = useState(getPath);
-  const [matches, setMatches] = useState(() => getMatches());
-  const [players, setPlayers] = useState(() => getPlayers());
-  const [stages, setStages] = useState(() => getStages());
-  const [tableControls, setTableControls] = useState(() => getTableControls());
-  const [breaks, setBreaks] = useState(() => getBreaks());
-  const [tournamentControl, setTournamentControl] = useState(() => getTournamentControl());
-  const [tournamentSettings, setTournamentSettings] = useState(() => getTournamentSettings());
-  const [eventTimeline, setEventTimeline] = useState(() => getEventTimeline());
-  const [seedings, setSeedings] = useState(() => getSeedings());
-  const [groups, setGroups] = useState(() => getGroups());
-  const [doublesPairs, setDoublesPairs] = useState(() => getDoublesPairs());
+  const [matches, setMatches] = useState([]);
+  const [players, setPlayers] = useState([]);
+  const [stages, setStages] = useState([]);
+  const [tableControls, setTableControls] = useState({});
+  const [breaks, setBreaks] = useState([]);
+  const [tournamentControl, setTournamentControl] = useState(emptyTournamentControl);
+  const [tournamentSettings, setTournamentSettings] = useState(defaultTournamentSettings);
+  const [eventTimeline, setEventTimeline] = useState(defaultEventTimeline);
+  const [seedings, setSeedings] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [doublesPairs, setDoublesPairs] = useState([]);
   const [dataSourceError, setDataSourceError] = useState("");
   const [language, setLanguage] = useState(() => localStorage.getItem(LANGUAGE_KEY) || "zh");
   const [isLoggedIn, setIsLoggedIn] = useState(() => hasAdminSession());
@@ -91,17 +78,23 @@ export default function App() {
   useEffect(() => {
     let active = true;
     let unsubscribe = () => {};
-    loadAllData().then((nextData) => {
-      if (!active) return;
-      replaceAllData(nextData);
-      setDataSourceError(nextData.dataSourceError || "");
-      unsubscribe = subscribeToTournamentData(() => {
-        loadAllData().then((freshData) => {
-          replaceAllData(freshData);
-          setDataSourceError(freshData.dataSourceError || "");
+    loadAllData()
+      .then((nextData) => {
+        if (!active) return;
+        replaceAllData(nextData);
+        setDataSourceError("");
+        unsubscribe = subscribeToTournamentData(() => {
+          loadAllData()
+            .then((freshData) => {
+              replaceAllData(freshData);
+              setDataSourceError("");
+            })
+            .catch((error) => setDataSourceError(error.message));
         });
+      })
+      .catch((error) => {
+        if (active) setDataSourceError(error.message);
       });
-    });
     return () => {
       active = false;
       unsubscribe();
@@ -150,7 +143,6 @@ export default function App() {
   function updateMatches(nextMatches) {
     const sorted = [...nextMatches].sort((a, b) => new Date(a.time) - new Date(b.time));
     setMatches(sorted);
-    saveMatches(sorted);
     saveMatchesData(sorted).catch((error) => setDataSourceError(error.message));
   }
 
@@ -162,32 +154,27 @@ export default function App() {
   function updatePlayers(nextPlayers) {
     const sorted = [...nextPlayers].sort((a, b) => a.name.localeCompare(b.name));
     setPlayers(sorted);
-    savePlayers(sorted);
     savePlayersData(sorted).catch((error) => setDataSourceError(error.message));
   }
 
   function updateStages(nextStages) {
     const sorted = [...nextStages].sort((a, b) => a.order - b.order);
     setStages(sorted);
-    saveStages(sorted);
     saveStagesData(sorted).catch((error) => setDataSourceError(error.message));
   }
 
   function updateTableControls(nextTableControls) {
     setTableControls(nextTableControls);
-    saveTableControls(nextTableControls);
     saveTableControlsData(nextTableControls).catch((error) => setDataSourceError(error.message));
   }
 
   function updateBreaks(nextBreaks) {
     setBreaks(nextBreaks);
-    saveBreaks(nextBreaks);
     saveBreaksData(nextBreaks).catch((error) => setDataSourceError(error.message));
   }
 
   function updateTournamentControl(nextTournamentControl) {
     setTournamentControl(nextTournamentControl);
-    saveTournamentControl(nextTournamentControl);
     saveTournamentControlData(nextTournamentControl, tournamentSettings).catch((error) =>
       setDataSourceError(error.message)
     );
@@ -195,7 +182,6 @@ export default function App() {
 
   function updateTournamentSettings(nextTournamentSettings) {
     setTournamentSettings(nextTournamentSettings);
-    saveTournamentSettings(nextTournamentSettings);
     saveTournamentSettingsData(nextTournamentSettings, tournamentControl).catch((error) =>
       setDataSourceError(error.message)
     );
@@ -206,7 +192,6 @@ export default function App() {
           current[table] || { timeBankSeconds: 0 },
         ])
       );
-      saveTableControls(nextControls);
       saveTableControlsData(nextControls).catch((error) => setDataSourceError(error.message));
       return nextControls;
     });
@@ -217,25 +202,21 @@ export default function App() {
       (a, b) => (Number(a.order) || 0) - (Number(b.order) || 0) || String(a.timeStart).localeCompare(String(b.timeStart))
     );
     setEventTimeline(sorted);
-    saveEventTimeline(sorted);
     saveEventTimelineData(sorted).catch((error) => setDataSourceError(error.message));
   }
 
   function updateSeedings(nextSeedings) {
     setSeedings(nextSeedings);
-    saveSeedings(nextSeedings);
     saveSeedingsData(nextSeedings).catch((error) => setDataSourceError(error.message));
   }
 
   function updateGroups(nextGroups) {
     setGroups(nextGroups);
-    saveGroups(nextGroups);
     saveGroupsData(nextGroups).catch((error) => setDataSourceError(error.message));
   }
 
   function updateDoublesPairs(nextDoublesPairs) {
     setDoublesPairs(nextDoublesPairs);
-    saveDoublesPairs(nextDoublesPairs);
     saveDoublesPairsData(nextDoublesPairs, players).catch((error) => setDataSourceError(error.message));
   }
 
@@ -257,6 +238,15 @@ export default function App() {
     setGroups(nextData.groups);
     setDoublesPairs(nextData.doublesPairs || []);
     setDataSourceError(nextData.dataSourceError || "");
+  }
+
+  function clearLocalCache() {
+    clearLocalCacheData();
+    if (isLocalStorageMode) {
+      loadAllData()
+        .then((nextData) => replaceAllData(nextData))
+        .catch((error) => setDataSourceError(error.message));
+    }
   }
 
   function importOfficialDoublesPairs(playersForImport) {
@@ -373,6 +363,7 @@ export default function App() {
         onTournamentStateChange={updateTournamentState}
         onReplaceAllData={replaceAllData}
         onOfficialDoublesImport={importOfficialDoublesPairs}
+        onClearLocalCache={clearLocalCache}
         onLogout={handleLogout}
         onPublicView={() => navigate("/")}
       />

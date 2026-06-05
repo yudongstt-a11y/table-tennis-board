@@ -866,6 +866,24 @@ h2 {
   font-weight: 900;
 }
 
+.data-source-error-banner {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid #fecdca;
+  border-radius: 14px;
+  background: #fffbfa;
+  color: #b42318;
+  font-weight: 800;
+}
+
+.data-source-error-banner span {
+  color: #7a271a;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
 .form-warning {
   grid-column: 1 / -1;
   border-radius: 8px;

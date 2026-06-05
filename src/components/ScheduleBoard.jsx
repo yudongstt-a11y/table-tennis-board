@@ -30,6 +30,7 @@ export default function ScheduleBoard({
   doublesPairs,
   tournamentSettings,
   eventTimeline,
+  dataSourceError,
   language,
   tournamentControl,
   onLanguageChange,
@@ -148,6 +149,13 @@ export default function ScheduleBoard({
         <strong>{t(`tournament_${tournamentControl?.status || "not_started"}`)}</strong>
         {tournamentControl?.status === "paused" && <span>{t("matchesPaused")}</span>}
       </section>
+
+      {dataSourceError && (
+        <section className="data-source-error-banner">
+          <strong>{t("supabaseConfigMissing")}</strong>
+          <span>{t("supabaseEnvHelp")}</span>
+        </section>
+      )}
 
       <nav className="top-tabs" aria-label="Public sections">
         <button

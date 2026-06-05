@@ -305,4 +305,22 @@ export function resetDemoData() {
   };
 }
 
+export function clearLocalCacheData() {
+  [
+    MATCHES_KEY,
+    PLAYERS_KEY,
+    STAGES_KEY,
+    TABLE_CONTROLS_KEY,
+    BREAKS_KEY,
+    TOURNAMENT_CONTROL_KEY,
+    TOURNAMENT_SETTINGS_KEY,
+    EVENT_TIMELINE_KEY,
+    SEEDINGS_KEY,
+    GROUPS_KEY,
+    DOUBLES_PAIRS_KEY,
+    "officialPlayersImported",
+    "table_tennis_official_imported",
+  ].forEach((key) => localStorage.removeItem(key));
+}
+
 export const loadMatches = getMatches;

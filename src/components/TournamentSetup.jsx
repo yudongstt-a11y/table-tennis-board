@@ -101,12 +101,10 @@ export default function TournamentSetup({
             <p className="eyebrow">{t("tournamentSetup")}</p>
             <h2>{t("tournamentSetup")}</h2>
             <p className={dataSource === "localStorage" || dataSourceError ? "data-source-warning" : "subtle"}>
-              {t("dataSource")}: {dataSource === "supabase" ? "Supabase" : "localStorage"}
-              {dataSourceError ? ` · ${dataSourceError}` : ""}
+              {dataSource === "supabase" ? t("supabaseLiveDatabase") : t("localStorageDataSource")}
             </p>
-            {(dataSource === "localStorage" || dataSourceError) && (
-              <p className="data-source-warning">{t("localStorageWarning")}</p>
-            )}
+            {dataSourceError && <p className="data-source-warning">{t("supabaseConfigMissing")}</p>}
+            {dataSource === "localStorage" && <p className="data-source-warning">{t("localStorageWarning")}</p>}
           </div>
           <button className="primary-button" type="submit">
             {t("saveTournamentSetup")}

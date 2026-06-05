@@ -6,24 +6,17 @@ const repo = isSupabaseMode() ? supabaseRepo : localRepo;
 
 export { DATA_SOURCE };
 
-async function withFallback(action, fallbackAction = null) {
+async function runRepositoryAction(action) {
   try {
     return await action(repo);
   } catch (error) {
     console.error("[DataRepository]", error);
-    if (isSupabaseMode() && fallbackAction) {
-      const data = await fallbackAction(localRepo);
-      return {
-        ...data,
-        dataSourceError: error.message || "Unable to connect to Supabase.",
-      };
-    }
     throw error;
   }
 }
 
 export function loadAllData() {
-  return withFallback((activeRepo) => activeRepo.loadAllData(), (fallbackRepo) => fallbackRepo.loadAllData());
+  return runRepositoryAction((activeRepo) => activeRepo.loadAllData());
 }
 
 export function saveTournamentSettingsData(settings, control) {
