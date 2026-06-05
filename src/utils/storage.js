@@ -101,6 +101,7 @@ export function upgradeStage(stage) {
     winnerGames: stage.winnerGames || format.winnerGames,
     defaultMatchMinutes: stage.defaultMatchMinutes || format.defaultMinutes,
     order: Number(stage.order) || 1,
+    tableAllocation: Math.max(1, Number(stage.tableAllocation) || 1),
   };
 }
 

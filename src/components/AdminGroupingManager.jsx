@@ -24,6 +24,7 @@ export default function AdminGroupingManager({
   seedings,
   groups,
   matches,
+  tournamentSettings,
   language,
   t,
   onSeedingsChange,
@@ -37,6 +38,7 @@ export default function AdminGroupingManager({
   const [groupCount, setGroupCount] = useState("");
   const [draftGroups, setDraftGroups] = useState([]);
   const [notice, setNotice] = useState("");
+  const [generateDraft, setGenerateDraft] = useState(null);
 
   const eventPlayers = useMemo(
     () =>
@@ -173,21 +175,137 @@ export default function AdminGroupingManager({
     setNotice(published ? t("groupsPublished") : t("groupsUnpublished"));
   }
 
-  function generateGroupMatches() {
-    if (!selectedStage || !draftGroups.length) return;
-    if (!window.confirm(t("generateGroupMatchesConfirm"))) return;
+  function openGenerateMatches() {
+    if (!selectedStage) return;
+    setGenerateDraft({
+      tableCount: tournamentSettings.tableCount,
+      selectedTables: tournamentSettings.tableNames.slice(0, tournamentSettings.tableCount),
+      scope: "current_stage",
+      startTime: "09:30",
+      error: "",
+    });
+  }
 
-    const nextGroupMatches = createGroupMatches({
-      groups: draftGroups,
-      playersById,
-      stage: selectedStage,
-      eventId,
+  function groupsForStage(stageId) {
+    if (stageId === selectedStage?.id && draftGroups.length) return draftGroups;
+    return groups.filter((group) => group.stageId === stageId);
+  }
+
+  function stagesForScope(scope) {
+    if (!selectedStage) return [];
+    if (scope === "current_stage") return [selectedStage];
+    if (scope === "current_event") return eventStages;
+    return stages;
+  }
+
+  function tableOrderMap(existingMatches) {
+    const map = new Map();
+    existingMatches.forEach((match) => {
+      if (!match.table) return;
+      map.set(match.table, Math.max(map.get(match.table) || 0, Number(match.tableOrder) || 0));
+    });
+    return map;
+  }
+
+  function withAssignedTables(rawMatches, stageTables, orderMap, startMsByTable) {
+    return rawMatches
+      .sort(
+        (a, b) =>
+          (Number(a.roundNumber) || 0) - (Number(b.roundNumber) || 0) ||
+          String(a.groupId).localeCompare(String(b.groupId))
+      )
+      .map((match, index) => {
+        const table = stageTables[index % stageTables.length];
+        const nextOrder = (orderMap.get(table) || 0) + 1;
+        orderMap.set(table, nextOrder);
+
+        let time = match.time;
+        if (startMsByTable) {
+          const startMs = startMsByTable.get(table);
+          time = new Date(startMs).toISOString().slice(0, 19);
+          startMsByTable.set(table, startMs + (Number(match.defaultMinutes) || 25) * 60 * 1000);
+        }
+
+        return {
+          ...match,
+          table,
+          tableOrder: nextOrder,
+          stageOrder: Number(match.stageOrder || selectedStage?.order || 1),
+          batchIndex: nextOrder,
+          time,
+        };
+      });
+  }
+
+  function confirmGenerateMatches(event) {
+    event.preventDefault();
+    if (!selectedStage) return;
+    const selectedTables = generateDraft.selectedTables.slice(0, Number(generateDraft.tableCount) || 1);
+    if (!selectedTables.length) {
+      setGenerateDraft((draft) => ({ ...draft, error: t("selectTargetTable") }));
+      return;
+    }
+
+    const targetStages = stagesForScope(generateDraft.scope)
+      .filter((stage) => groupsForStage(stage.id).length)
+      .sort((a, b) => Number(a.order) - Number(b.order));
+    const stagesByOrder = new Map();
+    targetStages.forEach((stage) => {
+      const order = Number(stage.order) || 1;
+      stagesByOrder.set(order, [...(stagesByOrder.get(order) || []), stage]);
     });
 
-    const retainedMatches = matches.filter(
-      (match) => !(match.eventId === eventId && match.stageId === selectedStage.id && match.groupId)
-    );
-    onMatchesChange([...retainedMatches, ...nextGroupMatches]);
+    for (const [, batchStages] of stagesByOrder) {
+      const allocated = batchStages.reduce((sum, stage) => sum + (Number(stage.tableAllocation) || 1), 0);
+      if (allocated > selectedTables.length) {
+        setGenerateDraft((draft) => ({ ...draft, error: t("stageAllocationExceeded") }));
+        return;
+      }
+    }
+
+    const targetStageIds = new Set(targetStages.map((stage) => stage.id));
+    const retainedMatches = matches.filter((match) => !targetStageIds.has(match.stageId));
+    const startDate = generateDraft.startTime
+      ? new Date(`${tournamentSettings.date || "2026-06-15"}T${generateDraft.startTime}:00`)
+      : null;
+    let batchStartMs = startDate && !Number.isNaN(startDate.getTime()) ? startDate.getTime() : null;
+    const orderMap = tableOrderMap(retainedMatches);
+    const generatedMatches = [];
+
+    Array.from(stagesByOrder.entries())
+      .sort((a, b) => a[0] - b[0])
+      .forEach(([order, batchStages]) => {
+        let tableCursor = 0;
+        let batchMaxEndMs = batchStartMs;
+
+        batchStages.forEach((stage) => {
+          const allocation = Number(stage.tableAllocation) || 1;
+          const stageTables = selectedTables.slice(tableCursor, tableCursor + allocation);
+          tableCursor += allocation;
+
+          const rawMatches = createGroupMatches({
+            groups: groupsForStage(stage.id),
+            playersById,
+            stage,
+            eventId: stage.eventId,
+          }).map((match) => ({ ...match, stageOrder: order }));
+          const startMsByTable = batchStartMs
+            ? new Map(stageTables.map((table) => [table, batchStartMs]))
+            : null;
+          const assigned = withAssignedTables(rawMatches, stageTables, orderMap, startMsByTable);
+          generatedMatches.push(...assigned);
+
+          if (startMsByTable) {
+            const stageEndMs = Math.max(...Array.from(startMsByTable.values()));
+            batchMaxEndMs = Math.max(batchMaxEndMs || stageEndMs, stageEndMs);
+          }
+        });
+
+        if (batchStartMs) batchStartMs = batchMaxEndMs;
+      });
+
+    onMatchesChange([...retainedMatches, ...generatedMatches]);
+    setGenerateDraft(null);
     setNotice(t("matchesGenerated"));
   }
 
@@ -340,7 +458,7 @@ export default function AdminGroupingManager({
               <button className="ghost-button" type="button" onClick={() => setGroupsPublished(!currentGroups.some((group) => group.published))}>
                 {currentGroups.some((group) => group.published) ? t("unpublishGroups") : t("publishGroups")}
               </button>
-              <button className="ghost-button" type="button" onClick={generateGroupMatches}>
+              <button className="ghost-button" type="button" onClick={openGenerateMatches}>
                 {t("generateGroupMatches")}
               </button>
             </div>
@@ -401,6 +519,107 @@ export default function AdminGroupingManager({
             </section>
           )}
         </section>
+      )}
+
+      {generateDraft && (
+        <div className="modal-backdrop" role="presentation">
+          <section className="match-modal" role="dialog" aria-modal="true" aria-label={t("generateMatchesSettings")}>
+            <div className="modal-header">
+              <div>
+                <p className="eyebrow">{t("autoAssignTables")}</p>
+                <h2>{t("generateMatchesSettings")}</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={() => setGenerateDraft(null)}>
+                X
+              </button>
+            </div>
+
+            <form className="match-form" onSubmit={confirmGenerateMatches}>
+              <label>
+                <span>{t("tablesToUse")}</span>
+                <input
+                  type="number"
+                  min="1"
+                  max={tournamentSettings.tableCount}
+                  value={generateDraft.tableCount}
+                  onChange={(event) =>
+                    setGenerateDraft((draft) => ({
+                      ...draft,
+                      tableCount: event.target.value,
+                      selectedTables: tournamentSettings.tableNames.slice(0, Number(event.target.value) || 1),
+                      error: "",
+                    }))
+                  }
+                />
+              </label>
+
+              <label>
+                <span>{t("generationScope")}</span>
+                <select
+                  value={generateDraft.scope}
+                  onChange={(event) =>
+                    setGenerateDraft((draft) => ({ ...draft, scope: event.target.value, error: "" }))
+                  }
+                >
+                  <option value="current_stage">{t("currentStage")}</option>
+                  <option value="current_event">{t("currentEventStages")}</option>
+                  <option value="all_events">{t("allEventStages")}</option>
+                </select>
+              </label>
+
+              <label>
+                <span>{t("startTime")}</span>
+                <input
+                  type="time"
+                  value={generateDraft.startTime}
+                  onChange={(event) =>
+                    setGenerateDraft((draft) => ({ ...draft, startTime: event.target.value }))
+                  }
+                />
+              </label>
+
+              <fieldset className="category-checkboxes">
+                <legend>{t("selectTables")}</legend>
+                {tournamentSettings.tableNames.map((table) => (
+                  <label key={table}>
+                    <input
+                      type="checkbox"
+                      checked={generateDraft.selectedTables.includes(table)}
+                      onChange={() =>
+                        setGenerateDraft((draft) => {
+                          const selectedTables = draft.selectedTables.includes(table)
+                            ? draft.selectedTables.filter((item) => item !== table)
+                            : [...draft.selectedTables, table];
+                          return {
+                            ...draft,
+                            selectedTables,
+                            tableCount: selectedTables.length,
+                            error: "",
+                          };
+                        })
+                      }
+                    />
+                    <span>{table}</span>
+                  </label>
+                ))}
+              </fieldset>
+
+              <div className="form-hint">
+                {t("sameOrderCanRunTogether")}. {t("lowerNumbersEarlier")}.
+              </div>
+              {generateDraft.error && <div className="form-error">{generateDraft.error}</div>}
+
+              <div className="form-actions">
+                <button className="ghost-button" type="button" onClick={() => setGenerateDraft(null)}>
+                  {t("cancel")}
+                </button>
+                <button className="primary-button" type="submit">
+                  {t("generateGroupMatches")}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
       )}
     </section>
   );

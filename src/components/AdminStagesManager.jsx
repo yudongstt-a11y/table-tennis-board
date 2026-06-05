@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { CATEGORIES, getCategoryLabel } from "../constants/categories.js";
 import {
   MATCH_FORMATS,
@@ -15,6 +15,7 @@ const emptyStage = {
   format: "round_robin",
   matchFormat: "best_of_5",
   order: 1,
+  tableAllocation: 1,
 };
 
 function normalizeStage(stage, id) {
@@ -26,31 +27,44 @@ function normalizeStage(stage, id) {
     winnerGames: format.winnerGames,
     defaultMatchMinutes: format.defaultMinutes,
     order: Number(stage.order) || 1,
+    tableAllocation: Math.max(1, Number(stage.tableAllocation) || 1),
   };
 }
 
-export default function AdminStagesManager({ stages, language, t, onStagesChange }) {
+export default function AdminStagesManager({ stages, tournamentSettings, language, t, onStagesChange }) {
   const [draft, setDraft] = useState(null);
   const [editingId, setEditingId] = useState("");
+  const [error, setError] = useState("");
 
   const sortedStages = useMemo(
     () => [...stages].sort((a, b) => a.order - b.order),
     [stages]
   );
+  const stageBatches = useMemo(() => {
+    const map = new Map();
+    sortedStages.forEach((stage) => {
+      const order = Number(stage.order) || 1;
+      map.set(order, [...(map.get(order) || []), stage]);
+    });
+    return Array.from(map.entries()).sort((a, b) => a[0] - b[0]);
+  }, [sortedStages]);
 
   function openAdd() {
     setEditingId("");
+    setError("");
     setDraft({ ...emptyStage, order: stages.length + 1 });
   }
 
   function openEdit(stage) {
     setEditingId(stage.id);
+    setError("");
     setDraft({ ...stage });
   }
 
   function closeForm() {
     setDraft(null);
     setEditingId("");
+    setError("");
   }
 
   function updateDraft(field, value) {
@@ -61,12 +75,19 @@ export default function AdminStagesManager({ stages, language, t, onStagesChange
     event.preventDefault();
     const id = editingId || `stage_${Date.now()}`;
     const normalized = normalizeStage(draft, id);
+    const nextStages = editingId
+      ? stages.map((stage) => (stage.id === editingId ? normalized : stage))
+      : [...stages, normalized];
+    const sameOrderTotal = nextStages
+      .filter((stage) => Number(stage.order) === Number(normalized.order))
+      .reduce((sum, stage) => sum + (Number(stage.tableAllocation) || 1), 0);
 
-    if (editingId) {
-      onStagesChange(stages.map((stage) => (stage.id === editingId ? normalized : stage)));
-    } else {
-      onStagesChange([...stages, normalized]);
+    if (sameOrderTotal > tournamentSettings.tableCount) {
+      setError(t("stageAllocationExceeded"));
+      return;
     }
+
+    onStagesChange(nextStages);
 
     closeForm();
   }
@@ -87,6 +108,30 @@ export default function AdminStagesManager({ stages, language, t, onStagesChange
         </button>
       </div>
 
+      <div className="stage-batch-list">
+        {stageBatches.map(([order, batchStages]) => {
+          const totalAllocated = batchStages.reduce(
+            (sum, stage) => sum + (Number(stage.tableAllocation) || 1),
+            0
+          );
+          const overLimit = totalAllocated > tournamentSettings.tableCount;
+
+          return (
+            <article className={overLimit ? "stage-batch-card over-limit" : "stage-batch-card"} key={order}>
+              <div>
+                <strong>{t("stageOrder")} {order}</strong>
+                <span>{t("allocatedTables")}: {totalAllocated} / {tournamentSettings.tableCount}</span>
+              </div>
+              <p>
+                {batchStages
+                  .map((stage) => `${language === "zh" ? stage.nameZh : stage.nameEn} · ${stage.tableAllocation || 1}`)
+                  .join(" | ")}
+              </p>
+            </article>
+          );
+        })}
+      </div>
+
       <div className="stage-grid">
         {sortedStages.map((stage) => (
           <article className="stage-card" key={stage.id}>
@@ -99,6 +144,7 @@ export default function AdminStagesManager({ stages, language, t, onStagesChange
               <div><dt>{t("stageFormat")}</dt><dd>{getStageFormatLabel(stage.format, language)}</dd></div>
               <div><dt>{t("matchFormat")}</dt><dd>{getMatchFormatLabel(stage.matchFormat, language)}</dd></div>
               <div><dt>{t("defaultDuration")}</dt><dd>{stage.defaultMatchMinutes} {t("minutes")}</dd></div>
+              <div><dt>{t("tablesAllocated")}</dt><dd>{stage.tableAllocation || 1}</dd></div>
             </dl>
             <div className="row-actions">
               <button className="ghost-button" type="button" onClick={() => openEdit(stage)}>
@@ -174,11 +220,21 @@ export default function AdminStagesManager({ stages, language, t, onStagesChange
                 />
                 <small className="field-help">{t("stageOrderHelp")}</small>
               </label>
-              <div className="form-hint">
-                {t("winner")}: {getMatchFormat(draft.matchFormat).winnerGames} ·{" "}
+              <label>
+                <span>{t("tablesAllocated")}</span>
+                <input
+                  type="number"
+                  min="1"
+                  max={tournamentSettings.tableCount}
+                  value={draft.tableAllocation}
+                  onChange={(event) => updateDraft("tableAllocation", event.target.value)}
+                />
+                <small className="field-help">{t("tablesAllocatedHelp")}</small>
+              </label>              <div className="form-hint">
+                {t("winner")}: {getMatchFormat(draft.matchFormat).winnerGames} 路{" "}
                 {t("defaultDuration")}: {getMatchFormat(draft.matchFormat).defaultMinutes} {t("minutes")}
               </div>
-              <div className="form-actions">
+              {error && <div className="form-error">{error}</div>}`r`n              <div className="form-actions">
                 <button className="ghost-button" type="button" onClick={closeForm}>
                   {t("cancel")}
                 </button>
@@ -193,3 +249,4 @@ export default function AdminStagesManager({ stages, language, t, onStagesChange
     </section>
   );
 }
+

@@ -9,6 +9,7 @@ export const demoStages = [
     winnerGames: 3,
     defaultMatchMinutes: 25,
     order: 1,
+    tableAllocation: 4,
   },
   {
     id: "stage_002",
@@ -19,7 +20,8 @@ export const demoStages = [
     matchFormat: "best_of_5",
     winnerGames: 3,
     defaultMatchMinutes: 25,
-    order: 2,
+    order: 1,
+    tableAllocation: 2,
   },
   {
     id: "stage_003",
@@ -30,7 +32,8 @@ export const demoStages = [
     matchFormat: "best_of_3",
     winnerGames: 2,
     defaultMatchMinutes: 15,
-    order: 3,
+    order: 2,
+    tableAllocation: 6,
   },
   {
     id: "stage_004",
@@ -41,6 +44,7 @@ export const demoStages = [
     matchFormat: "best_of_7",
     winnerGames: 4,
     defaultMatchMinutes: 45,
-    order: 4,
+    order: 3,
+    tableAllocation: 6,
   },
 ];

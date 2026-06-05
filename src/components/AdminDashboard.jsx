@@ -366,7 +366,13 @@ export default function AdminDashboard({
           onPlayersChange={handlePlayersChange}
         />
       ) : activeTab === "stages" ? (
-        <AdminStagesManager stages={stages} language={language} t={t} onStagesChange={onStagesChange} />
+        <AdminStagesManager
+          stages={stages}
+          tournamentSettings={tournamentSettings}
+          language={language}
+          t={t}
+          onStagesChange={onStagesChange}
+        />
       ) : activeTab === "grouping" ? (
         <AdminGroupingManager
           players={players}
@@ -374,6 +380,7 @@ export default function AdminDashboard({
           seedings={seedings}
           groups={groups}
           matches={matches}
+          tournamentSettings={tournamentSettings}
           language={language}
           t={t}
           onSeedingsChange={onSeedingsChange}

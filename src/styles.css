@@ -891,6 +891,40 @@ h2 {
   gap: 14px;
 }
 
+.stage-batch-list {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.stage-batch-card {
+  display: grid;
+  gap: 6px;
+  border: 1px solid #dbe5ef;
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: #ffffff;
+}
+
+.stage-batch-card.over-limit {
+  border-color: #fecaca;
+  background: #fff1f0;
+}
+
+.stage-batch-card div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.stage-batch-card p {
+  margin: 0;
+  color: #607086;
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .stage-card,
 .control-card {
   display: grid;
