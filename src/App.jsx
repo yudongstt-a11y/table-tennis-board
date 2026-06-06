@@ -41,17 +41,24 @@ const emptyTournamentControl = {
 function getPath() {
   const hashPath = window.location.hash.replace(/^#/, "");
   if (hashPath.startsWith("/")) return hashPath;
-  const base = import.meta.env.BASE_URL || "/";
   const pathname = window.location.pathname || "/";
-  if (base !== "/" && pathname.startsWith(base)) {
-    return pathname.slice(base.length - 1) || "/";
+  const basePath = "/table-tennis-board";
+  if (pathname === basePath || pathname === `${basePath}/`) {
+    return "/";
+  }
+  if (pathname.startsWith(`${basePath}/`)) {
+    return pathname.slice(basePath.length) || "/";
   }
   return pathname;
 }
 
 function navigate(path) {
-  window.location.hash = path;
-  window.dispatchEvent(new HashChangeEvent("hashchange"));
+  const nextHash = `#${path}`;
+  if (window.location.hash !== nextHash) {
+    window.location.hash = path;
+    return;
+  }
+  window.dispatchEvent(new Event("hashchange"));
 }
 
 function hasAdminSession() {
