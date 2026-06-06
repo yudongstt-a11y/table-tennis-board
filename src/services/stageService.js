@@ -1,12 +1,19 @@
 import { loadAllData, saveStagesData } from "./dataRepository.js";
 import { isSupabaseMode } from "../config/dataSource.js";
-import { supabase, supabaseConfigError } from "../lib/supabaseClient.js";
+import { supabase, supabaseClientError, supabaseConfigError } from "../lib/supabaseClient.js";
 import { isUuid } from "./supabaseMappers.js";
 
 async function run(query) {
   const { data, error } = await query;
   if (error) throw error;
   return data;
+}
+
+function requireSupabase() {
+  if (!supabase) {
+    throw new Error(supabaseConfigError || supabaseClientError || "Supabase client is not available.");
+  }
+  return supabase;
 }
 
 async function resolveTournamentId(tournamentId) {
@@ -91,7 +98,7 @@ export async function saveStage(stage) {
 
 export async function createStage(tournamentId, stage) {
   if (!isSupabaseMode()) return saveStage(stage);
-  if (!supabase) throw new Error(supabaseConfigError);
+  const client = requireSupabase();
 
   const resolvedTournamentId = await resolveTournamentId(tournamentId);
   const payload = stripGeneratedFields(toStageRow(stage, resolvedTournamentId));
@@ -99,17 +106,17 @@ export async function createStage(tournamentId, stage) {
 
   console.log("STAGE INSERT PAYLOAD", payload);
 
-  const data = await run(supabase.from("stages").insert(payload).select().single());
+  const data = await run(client.from("stages").insert(payload).select().single());
   return normalizeStage(data);
 }
 
 export async function updateStage(stageId, updates) {
   if (isSupabaseMode()) {
-    if (!supabase) throw new Error(supabaseConfigError);
+    const client = requireSupabase();
     const resolvedTournamentId = await resolveTournamentId(updates.tournamentId);
     const payload = stripGeneratedFields(toStageRow(updates, resolvedTournamentId));
     delete payload.id;
-    const data = await run(supabase.from("stages").update(payload).eq("id", stageId).select().single());
+    const data = await run(client.from("stages").update(payload).eq("id", stageId).select().single());
     return normalizeStage(data);
   }
 
@@ -121,8 +128,8 @@ export async function updateStage(stageId, updates) {
 
 export async function deleteStage(stageId) {
   if (isSupabaseMode()) {
-    if (!supabase) throw new Error(supabaseConfigError);
-    await run(supabase.from("stages").delete().eq("id", stageId));
+    const client = requireSupabase();
+    await run(client.from("stages").delete().eq("id", stageId));
     return getStages();
   }
 

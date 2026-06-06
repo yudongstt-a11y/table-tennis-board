@@ -1,4 +1,9 @@
-import { getSupabaseConfigStatus, supabase, supabaseConfigError } from "../lib/supabaseClient.js";
+import {
+  getSupabaseConfigStatus,
+  supabase,
+  supabaseClientError,
+  supabaseConfigError,
+} from "../lib/supabaseClient.js";
 import { DEFAULT_TOURNAMENT_SLUG } from "../config/dataSource.js";
 import { defaultTournamentSettings } from "../data/demoTournament.js";
 import {
@@ -31,7 +36,9 @@ import { cleanInsertPayload, cleanUpdatePayload } from "../utils/supabasePayload
 let currentTournament = null;
 
 function ensureClient() {
-  if (!supabase) throw new Error(supabaseConfigError);
+  if (!supabase) {
+    throw new Error(supabaseConfigError || supabaseClientError || "Supabase client is not available.");
+  }
   return supabase;
 }
 
