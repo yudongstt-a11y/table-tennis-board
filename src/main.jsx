@@ -10,7 +10,7 @@ function getHashPath() {
 
 function isHealthPath() {
   const hashPath = getHashPath();
-  return hashPath === "/health" || window.location.pathname.endsWith("/health");
+  return hashPath === "/health" || hashPath.startsWith("/health?") || window.location.pathname.endsWith("/health");
 }
 
 function HealthPage() {
