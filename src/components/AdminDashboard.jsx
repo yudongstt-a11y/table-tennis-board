@@ -19,6 +19,7 @@ import {
 } from "../utils/matchSchedule.js";
 import { resetDemoData } from "../utils/storage.js";
 import AdminGroupingManager from "./AdminGroupingManager.jsx";
+import AdminDiagnostics from "./AdminDiagnostics.jsx";
 import AdminPlayersManager from "./AdminPlayersManager.jsx";
 import AdminStagesManager from "./AdminStagesManager.jsx";
 import LanguageToggle from "./LanguageToggle.jsx";
@@ -363,14 +364,14 @@ export default function AdminDashboard({
       </header>
 
       <nav className="top-tabs" aria-label="Admin sections">
-        {["setup", "matches", "players", "stages", "grouping", "control"].map((tab) => (
+        {["setup", "matches", "players", "stages", "grouping", "control", "diagnostics"].map((tab) => (
           <button
             className={activeTab === tab ? "active" : ""}
             type="button"
             onClick={() => setActiveTab(tab)}
             key={tab}
           >
-            {t(tab)}
+            {tab === "diagnostics" ? "系统检查 / Diagnostics" : t(tab)}
           </button>
         ))}
       </nav>
@@ -386,6 +387,14 @@ export default function AdminDashboard({
           t={t}
           onSettingsChange={onTournamentSettingsChange}
           onEventTimelineChange={onEventTimelineChange}
+        />
+      ) : activeTab === "diagnostics" ? (
+        <AdminDiagnostics
+          dataSource={dataSource}
+          dataSourceError={dataSourceError}
+          supabaseDiagnostics={supabaseDiagnostics}
+          tournamentSettings={tournamentSettings}
+          t={t}
         />
       ) : activeTab === "players" ? (
         <AdminPlayersManager

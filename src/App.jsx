@@ -39,12 +39,19 @@ const emptyTournamentControl = {
 };
 
 function getPath() {
-  return window.location.pathname || "/";
+  const hashPath = window.location.hash.replace(/^#/, "");
+  if (hashPath.startsWith("/")) return hashPath;
+  const base = import.meta.env.BASE_URL || "/";
+  const pathname = window.location.pathname || "/";
+  if (base !== "/" && pathname.startsWith(base)) {
+    return pathname.slice(base.length - 1) || "/";
+  }
+  return pathname;
 }
 
 function navigate(path) {
-  window.history.pushState({}, "", path);
-  window.dispatchEvent(new PopStateEvent("popstate"));
+  window.location.hash = path;
+  window.dispatchEvent(new HashChangeEvent("hashchange"));
 }
 
 function hasAdminSession() {
@@ -75,7 +82,11 @@ export default function App() {
   useEffect(() => {
     const onPopState = () => setPath(getPath());
     window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
+    window.addEventListener("hashchange", onPopState);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+      window.removeEventListener("hashchange", onPopState);
+    };
   }, []);
 
   useEffect(() => {
@@ -360,7 +371,8 @@ export default function App() {
     path === "/admin/players" ||
     path === "/admin/stages" ||
     path === "/admin/grouping" ||
-    path === "/admin/control"
+    path === "/admin/control" ||
+    path === "/admin/diagnostics"
   ) {
     if (!isLoggedIn && !hasAdminSession()) {
       return (
@@ -386,6 +398,8 @@ export default function App() {
                   ? "grouping"
                   : path === "/admin/control"
                     ? "control"
+                    : path === "/admin/diagnostics"
+                      ? "diagnostics"
                     : "matches"
         }
         language={language}

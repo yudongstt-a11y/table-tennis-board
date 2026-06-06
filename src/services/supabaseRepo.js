@@ -26,6 +26,7 @@ import {
   isUuid,
 } from "./supabaseMappers.js";
 import { officialDoublesPairs } from "../data/officialPlayers.js";
+import { cleanInsertPayload, cleanUpdatePayload } from "../utils/supabasePayload.js";
 
 let currentTournament = null;
 
@@ -41,16 +42,9 @@ async function run(query) {
 }
 
 function stripGeneratedFields(payload) {
-  const copy = { ...payload };
-  if (!isUuid(copy.id)) delete copy.id;
-  delete copy.created_at;
-  delete copy.updated_at;
-  delete copy.createdAt;
-  delete copy.updatedAt;
-  Object.keys(copy).forEach((key) => {
-    if (copy[key] === undefined) delete copy[key];
-  });
-  return copy;
+  return isUuid(payload?.id)
+    ? { id: payload.id, ...cleanUpdatePayload(payload) }
+    : cleanInsertPayload(payload);
 }
 
 function makeDiagnostics() {
@@ -259,9 +253,9 @@ export async function savePlayers(players) {
 
     if (existingPlayer) {
       const { id: _discardedId, ...payload } = row;
-      await run(supabase.from("players").update(payload).eq("id", existingPlayer.id).select().single());
+      await run(supabase.from("players").update(cleanUpdatePayload(payload)).eq("id", existingPlayer.id).select().single());
     } else {
-      await run(supabase.from("players").insert(row).select().single());
+      await run(supabase.from("players").insert(cleanInsertPayload(row)).select().single());
     }
   }
 
@@ -319,10 +313,11 @@ export async function saveStages(stages) {
     delete payload.id;
 
     if (isUuid(stage.id) && existingIds.has(stage.id)) {
-      await run(supabase.from("stages").update(payload).eq("id", stage.id).select().single());
+      await run(supabase.from("stages").update(cleanUpdatePayload(payload)).eq("id", stage.id).select().single());
     } else {
-      console.log("STAGE INSERT PAYLOAD", payload);
-      await run(supabase.from("stages").insert(payload).select().single());
+      const insertPayload = cleanInsertPayload(payload);
+      console.log("STAGE INSERT PAYLOAD", insertPayload);
+      await run(supabase.from("stages").insert(insertPayload).select().single());
     }
   }
 
@@ -362,6 +357,92 @@ export async function saveEventTimeline(items) {
 
 export async function saveBreaks(items) {
   await replaceRows("breaks", items, breakToDb);
+}
+
+export async function runStageSaveTest() {
+  const id = await tournamentId();
+  const results = [];
+  const testNames = ["__TEST_STAGE__", "__TEST_STAGE_UPDATED__"];
+
+  await run(supabase.from("stages").delete().eq("tournament_id", id).in("name_zh", testNames));
+
+  const insertPayload = cleanInsertPayload({
+    tournament_id: id,
+    event_id: "singles",
+    name_zh: "__TEST_STAGE__",
+    name_en: "__TEST_STAGE__",
+    format: "round_robin",
+    match_format: "best_of_3",
+    winner_games: 2,
+    default_minutes: 15,
+    stage_order: 99,
+    table_allocation: 1,
+    next_stage_config: {},
+  });
+
+  console.log("STAGE INSERT PAYLOAD", insertPayload);
+  const inserted = await run(supabase.from("stages").insert(insertPayload).select().single());
+  results.push({ step: "Insert", ok: Boolean(inserted?.id), detail: inserted?.id || "" });
+
+  const readInserted = await run(supabase.from("stages").select("*").eq("id", inserted.id).single());
+  results.push({ step: "Read", ok: readInserted?.name_zh === "__TEST_STAGE__", detail: readInserted?.name_zh || "" });
+
+  const updated = await run(
+    supabase
+      .from("stages")
+      .update(cleanUpdatePayload({ name_zh: "__TEST_STAGE_UPDATED__" }))
+      .eq("id", inserted.id)
+      .select()
+      .single()
+  );
+  results.push({ step: "Update", ok: updated?.name_zh === "__TEST_STAGE_UPDATED__", detail: updated?.name_zh || "" });
+
+  await run(supabase.from("stages").delete().eq("id", inserted.id));
+  const deleted = await run(supabase.from("stages").select("id").eq("id", inserted.id).maybeSingle());
+  results.push({ step: "Delete", ok: !deleted, detail: deleted ? "still exists" : "deleted" });
+
+  return results;
+}
+
+export async function runPlayerSaveTest() {
+  const id = await tournamentId();
+  const results = [];
+
+  await run(supabase.from("players").delete().eq("tournament_id", id).eq("name", "__TEST_PLAYER__"));
+
+  const insertPayload = cleanInsertPayload({
+    tournament_id: id,
+    name: "__TEST_PLAYER__",
+    gender: "Other",
+    rating: null,
+    rating_note: null,
+    categories: ["singles"],
+    doubles_partner: null,
+    needs_doubles_partner: false,
+    notes: "save test",
+  });
+
+  const inserted = await run(supabase.from("players").insert(insertPayload).select().single());
+  results.push({ step: "Insert", ok: Boolean(inserted?.id), detail: inserted?.id || "" });
+
+  const readInserted = await run(supabase.from("players").select("*").eq("id", inserted.id).single());
+  results.push({ step: "Read", ok: readInserted?.name === "__TEST_PLAYER__", detail: readInserted?.name || "" });
+
+  const updated = await run(
+    supabase
+      .from("players")
+      .update(cleanUpdatePayload({ rating: 999 }))
+      .eq("id", inserted.id)
+      .select()
+      .single()
+  );
+  results.push({ step: "Update", ok: updated?.rating === 999, detail: String(updated?.rating ?? "") });
+
+  await run(supabase.from("players").delete().eq("id", inserted.id));
+  const deleted = await run(supabase.from("players").select("id").eq("id", inserted.id).maybeSingle());
+  results.push({ step: "Delete", ok: !deleted, detail: deleted ? "still exists" : "deleted" });
+
+  return results;
 }
 
 export function subscribeToTournament(onChange) {

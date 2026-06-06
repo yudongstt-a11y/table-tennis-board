@@ -92,3 +92,15 @@ export function resetData() {
 export function subscribeToTournamentData(onChange) {
   return isSupabaseMode() ? supabaseRepo.subscribeToTournament(onChange) : () => {};
 }
+
+export function runStageSaveTestData() {
+  return isSupabaseMode()
+    ? supabaseRepo.runStageSaveTest()
+    : Promise.resolve([{ step: "Skipped", ok: false, detail: "Supabase mode required" }]);
+}
+
+export function runPlayerSaveTestData() {
+  return isSupabaseMode()
+    ? supabaseRepo.runPlayerSaveTest()
+    : Promise.resolve([{ step: "Skipped", ok: false, detail: "Supabase mode required" }]);
+}
