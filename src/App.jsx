@@ -198,14 +198,12 @@ export default function App() {
 
   function updateStages(nextStages) {
     const sorted = [...nextStages].sort((a, b) => a.order - b.order);
-    setStages(sorted);
     return saveStagesData(sorted)
-      .then((savedStages) => {
-        if (Array.isArray(savedStages)) {
-          setStages([...savedStages].sort((a, b) => a.order - b.order));
-        }
+      .then(() => loadAllData())
+      .then((freshData) => {
+        replaceAllData(freshData);
         setDataSourceError("");
-        return savedStages;
+        return freshData.stages;
       })
       .catch((error) => {
         setDataSourceError(error.message);

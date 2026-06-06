@@ -75,7 +75,11 @@ export function toStageRow(stage, tournamentId) {
 }
 
 export async function getStages() {
-  return (await loadAllData()).stages;
+  const data = await loadAllData();
+  console.log("[STAGE GET] tournamentId", data.tournamentSettings?.id);
+  console.log("[STAGE GET] count", data.stages?.length || 0);
+  console.log("[STAGE GET] data", data.stages || []);
+  return data.stages;
 }
 
 export async function saveStages(stages) {
@@ -104,10 +108,17 @@ export async function createStage(tournamentId, stage) {
   const payload = stripGeneratedFields(toStageRow(stage, resolvedTournamentId));
   delete payload.id;
 
-  console.log("STAGE INSERT PAYLOAD", payload);
+  console.log("[STAGE CREATE] tournamentId", resolvedTournamentId);
+  console.log("[STAGE CREATE] payload", payload);
 
-  const data = await run(client.from("stages").insert(payload).select().single());
-  return normalizeStage(data);
+  try {
+    const data = await run(client.from("stages").insert(payload).select().single());
+    console.log("[STAGE CREATE] result", data);
+    return normalizeStage(data);
+  } catch (error) {
+    console.error("[STAGE CREATE ERROR]", error);
+    throw error;
+  }
 }
 
 export async function updateStage(stageId, updates) {
@@ -116,8 +127,16 @@ export async function updateStage(stageId, updates) {
     const resolvedTournamentId = await resolveTournamentId(updates.tournamentId);
     const payload = stripGeneratedFields(toStageRow(updates, resolvedTournamentId));
     delete payload.id;
-    const data = await run(client.from("stages").update(payload).eq("id", stageId).select().single());
-    return normalizeStage(data);
+    console.log("[STAGE UPDATE] stageId", stageId);
+    console.log("[STAGE UPDATE] payload", payload);
+    try {
+      const data = await run(client.from("stages").update(payload).eq("id", stageId).select().single());
+      console.log("[STAGE UPDATE] result", data);
+      return normalizeStage(data);
+    } catch (error) {
+      console.error("[STAGE UPDATE ERROR]", error);
+      throw error;
+    }
   }
 
   const data = await loadAllData();

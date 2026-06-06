@@ -77,7 +77,7 @@ export default function AdminStagesManager({ stages, tournamentSettings, languag
     event.preventDefault();
     setError("");
     setNotice("");
-    const id = editingId || `stage_${Date.now()}`;
+    const id = editingId || "";
     const normalized = normalizeStage(draft, id);
     const nextStages = editingId
       ? stages.map((stage) => (stage.id === editingId ? normalized : stage))
@@ -94,6 +94,8 @@ export default function AdminStagesManager({ stages, tournamentSettings, languag
     try {
       setIsSaving(true);
       console.log("[Stages] saving stage to Supabase", {
+        tournamentSlug: tournamentSettings.slug,
+        tournamentId: tournamentSettings.id,
         id: editingId || null,
         eventId: normalized.eventId,
         format: normalized.format,
@@ -263,11 +265,13 @@ export default function AdminStagesManager({ stages, tournamentSettings, languag
                   onChange={(event) => updateDraft("tableAllocation", event.target.value)}
                 />
                 <small className="field-help">{t("tablesAllocatedHelp")}</small>
-              </label>              <div className="form-hint">
+              </label>
+              <div className="form-hint">
                 {t("winner")}: {getMatchFormat(draft.matchFormat).winnerGames} 路{" "}
                 {t("defaultDuration")}: {getMatchFormat(draft.matchFormat).defaultMinutes} {t("minutes")}
               </div>
-              {error && <div className="form-error">{error}</div>}`r`n              <div className="form-actions">
+              {error && <div className="form-error">{error}</div>}
+              <div className="form-actions">
                 <button className="ghost-button" type="button" onClick={closeForm} disabled={isSaving}>
                   {t("cancel")}
                 </button>

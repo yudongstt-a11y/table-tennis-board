@@ -306,31 +306,82 @@ export async function saveDoublesPairs(pairs, players = []) {
 
 export async function saveStages(stages) {
   const id = await tournamentId();
-  const existing = await run(supabase.from("stages").select("*").eq("tournament_id", id));
+  console.log("[STAGE GET] tournamentId", id);
+  let existing = [];
+  try {
+    existing = await run(supabase.from("stages").select("*").eq("tournament_id", id));
+    console.log("[STAGE GET] count", existing?.length || 0);
+    console.log("[STAGE GET] data", existing);
+  } catch (error) {
+    console.error("[STAGE GET ERROR]", error);
+    throw error;
+  }
+
   const existingIds = new Set(existing.map((stage) => stage.id));
   const incomingIds = new Set(stages.map((stage) => stage.id).filter(isUuid));
   const deleteIds = existing.filter((stage) => !incomingIds.has(stage.id)).map((stage) => stage.id);
 
   if (deleteIds.length) {
-    await run(supabase.from("stages").delete().in("id", deleteIds));
+    console.log("[STAGE DELETE] ids", deleteIds);
+    try {
+      await run(supabase.from("stages").delete().in("id", deleteIds));
+    } catch (error) {
+      console.error("[STAGE DELETE ERROR]", error);
+      throw error;
+    }
   }
 
+  const changedIds = [];
   for (const stage of stages) {
     const payload = stripGeneratedFields(stageToDb(stage, id));
     delete payload.id;
 
     if (isUuid(stage.id) && existingIds.has(stage.id)) {
-      await run(supabase.from("stages").update(cleanUpdatePayload(payload)).eq("id", stage.id).select().single());
+      const updatePayload = cleanUpdatePayload(payload);
+      console.log("[STAGE UPDATE] stageId", stage.id);
+      console.log("[STAGE UPDATE] payload", updatePayload);
+      try {
+        const data = await run(supabase.from("stages").update(updatePayload).eq("id", stage.id).select().single());
+        console.log("[STAGE UPDATE] result", data);
+        changedIds.push(data.id);
+      } catch (error) {
+        console.error("[STAGE UPDATE ERROR]", error);
+        throw error;
+      }
     } else {
       const insertPayload = cleanInsertPayload(payload);
-      console.log("STAGE INSERT PAYLOAD", insertPayload);
-      await run(supabase.from("stages").insert(insertPayload).select().single());
+      console.log("[STAGE CREATE] tournamentId", id);
+      console.log("[STAGE CREATE] payload", insertPayload);
+      try {
+        const data = await run(supabase.from("stages").insert(insertPayload).select().single());
+        console.log("[STAGE CREATE] result", data);
+        changedIds.push(data.id);
+      } catch (error) {
+        console.error("[STAGE CREATE ERROR]", error);
+        throw error;
+      }
     }
   }
 
-  const savedStages = await run(
-    supabase.from("stages").select("*").eq("tournament_id", id).order("stage_order", { ascending: true })
-  );
+  console.log("[STAGE GET] tournamentId", id);
+  let savedStages = [];
+  try {
+    savedStages = await run(
+      supabase.from("stages").select("*").eq("tournament_id", id).order("stage_order", { ascending: true })
+    );
+    console.log("[STAGE GET] count", savedStages?.length || 0);
+    console.log("[STAGE GET] data", savedStages);
+  } catch (error) {
+    console.error("[STAGE GET ERROR]", error);
+    throw error;
+  }
+
+  const savedIds = new Set(savedStages.map((stage) => stage.id));
+  const missingIds = changedIds.filter((stageId) => !savedIds.has(stageId));
+  if (missingIds.length) {
+    throw new Error("Stage saved but could not be read back from Supabase. Check tournament_id or RLS.");
+  }
+
   return savedStages.map(stageFromDb);
 }
 
@@ -373,6 +424,16 @@ export async function runStageSaveTest() {
 
   await run(supabase.from("stages").delete().eq("tournament_id", id).in("name_zh", testNames));
 
+  console.log("[STAGE GET] tournamentId", id);
+  try {
+    const before = await run(supabase.from("stages").select("*").eq("tournament_id", id));
+    console.log("[STAGE GET] count", before?.length || 0);
+    console.log("[STAGE GET] data", before);
+  } catch (error) {
+    console.error("[STAGE GET ERROR]", error);
+    throw error;
+  }
+
   const insertPayload = cleanInsertPayload({
     tournament_id: id,
     event_id: "singles",
@@ -387,26 +448,52 @@ export async function runStageSaveTest() {
     next_stage_config: {},
   });
 
-  console.log("STAGE INSERT PAYLOAD", insertPayload);
-  const inserted = await run(supabase.from("stages").insert(insertPayload).select().single());
+  console.log("[STAGE CREATE] tournamentId", id);
+  console.log("[STAGE CREATE] payload", insertPayload);
+  let inserted;
+  try {
+    inserted = await run(supabase.from("stages").insert(insertPayload).select().single());
+    console.log("[STAGE CREATE] result", inserted);
+  } catch (error) {
+    console.error("[STAGE CREATE ERROR]", error);
+    throw error;
+  }
   results.push({ step: "Insert", ok: Boolean(inserted?.id), detail: inserted?.id || "" });
 
+  console.log("[STAGE GET] tournamentId", id);
   const readInserted = await run(supabase.from("stages").select("*").eq("id", inserted.id).single());
+  console.log("[STAGE GET] count", readInserted ? 1 : 0);
+  console.log("[STAGE GET] data", readInserted ? [readInserted] : []);
   results.push({ step: "Read", ok: readInserted?.name_zh === "__TEST_STAGE__", detail: readInserted?.name_zh || "" });
 
-  const updated = await run(
-    supabase
-      .from("stages")
-      .update(cleanUpdatePayload({ name_zh: "__TEST_STAGE_UPDATED__" }))
-      .eq("id", inserted.id)
-      .select()
-      .single()
-  );
+  const updatePayload = cleanUpdatePayload({ name_zh: "__TEST_STAGE_UPDATED__" });
+  console.log("[STAGE UPDATE] stageId", inserted.id);
+  console.log("[STAGE UPDATE] payload", updatePayload);
+  let updated;
+  try {
+    updated = await run(
+      supabase
+        .from("stages")
+        .update(updatePayload)
+        .eq("id", inserted.id)
+        .select()
+        .single()
+    );
+    console.log("[STAGE UPDATE] result", updated);
+  } catch (error) {
+    console.error("[STAGE UPDATE ERROR]", error);
+    throw error;
+  }
   results.push({ step: "Update", ok: updated?.name_zh === "__TEST_STAGE_UPDATED__", detail: updated?.name_zh || "" });
 
   await run(supabase.from("stages").delete().eq("id", inserted.id));
   const deleted = await run(supabase.from("stages").select("id").eq("id", inserted.id).maybeSingle());
   results.push({ step: "Delete", ok: !deleted, detail: deleted ? "still exists" : "deleted" });
+
+  console.log("[STAGE GET] tournamentId", id);
+  const after = await run(supabase.from("stages").select("*").eq("tournament_id", id));
+  console.log("[STAGE GET] count", after?.length || 0);
+  console.log("[STAGE GET] data", after);
 
   return results;
 }
