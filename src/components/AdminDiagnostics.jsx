@@ -33,6 +33,13 @@ export default function AdminDiagnostics({
   const [playerError, setPlayerError] = useState("");
   const [running, setRunning] = useState("");
 
+  const diagnosticsLabel =
+    t("diagnostics") === "diagnostics" ? "System Check / Diagnostics" : t("diagnostics");
+  const stageTestLabel =
+    t("runStageSaveTest") === "runStageSaveTest" ? "Run Stage Save Test" : t("runStageSaveTest");
+  const playerTestLabel =
+    t("runPlayerSaveTest") === "runPlayerSaveTest" ? "Run Player Save Test" : t("runPlayerSaveTest");
+
   async function runStageTest() {
     setRunning("stage");
     setStageError("");
@@ -137,6 +144,3 @@ export default function AdminDiagnostics({
     </section>
   );
 }
-  const diagnosticsLabel = t("diagnostics") === "diagnostics" ? "系统检查 / Diagnostics" : t("diagnostics");
-  const stageTestLabel = t("runStageSaveTest") === "runStageSaveTest" ? "运行阶段保存测试 / Run Stage Save Test" : t("runStageSaveTest");
-  const playerTestLabel = t("runPlayerSaveTest") === "runPlayerSaveTest" ? "运行选手保存测试 / Run Player Save Test" : t("runPlayerSaveTest");
